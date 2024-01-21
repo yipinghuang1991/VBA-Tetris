@@ -184,6 +184,9 @@ With This
         ' Make the adjacent row and column largest so as to draw less thing on the screen
         Let .Range("AB:AB").ColumnWidth = 255
         Let .Range("32:32").RowHeight = 409
+        ' Make the adjacent row and column black
+        Let .Range("AB1:AB32").Interior.ColorIndex = 1
+        Let .Range("A32:AA32").Interior.ColorIndex = 1
         ' Hide the top two rows according to guideline
         Let .Range("8:9").EntireRow.Hidden = True
         Call .Protect(, True, True, True, , True)
