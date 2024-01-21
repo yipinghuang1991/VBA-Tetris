@@ -63,6 +63,7 @@ Private Type Variable
     ' Hold
     HeldShape As TetrominoShape
     Held As Tetris
+    IsHeld As Boolean
     
     FallingShape As TetrominoShape
     FallingPiece As Tetromino
@@ -86,7 +87,7 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Class_Terminate()
     Call StopGravity
-    Call OnEnd
+    'Call OnEnd
 End Sub
 '=============================================================================80
 ' Read-Only Property
@@ -166,7 +167,7 @@ End Sub
 '-----------------------------------------------------------------------------80
 Public Sub Start()
 With This
-    Call OnStart
+    'Call OnStart
     
     With .Worksheet
         Let .Range("A1:AC32").RowHeight = RowHeight
@@ -203,6 +204,8 @@ With This
         Call Tet.DrawAll
     Next Tet
     
+    Let Message = "Started"
+    
     Call SpawnIncoming
     Call StartGravity
     Call GameLoop
@@ -226,7 +229,11 @@ With This
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyH) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyH Then
                     Let .LastPressedKey = KeyCodeConstants.vbKeyH
-                    Call Hold
+                    If .IsHeld Then
+                        'Let Message = "Already Held"
+                    Else
+                        Call Hold
+                    End If
                 End If
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyUp) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyUp Then
@@ -404,6 +411,8 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Hold()
 With This
+    Let .IsHeld = True
+    
     Call StopGravity
     Call UnlinkPiece
     
@@ -424,6 +433,8 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Ground()
 With This
+    Let .IsHeld = False
+    
     Dim B As Block
     For Each B In .FallingPiece.Blocks
         Set B.Parent = Nothing
