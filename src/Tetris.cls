@@ -129,14 +129,14 @@ With This
     Dim LevelCap As Long: Let LevelCap = IIf(.Level >= 15, 15, .Level)
     Let .PieceStayTime = 1000 * (0.8 - 0.007 * (LevelCap - 1)) ^ (LevelCap - 1)
     
-    Let .Worksheet.Range("G16").Resize(, 3).Value2 = _
+    Let .Worksheet.Range("E15").Resize(, 3).Value2 = _
                         Array(.Level \ 100, (.Level \ 10) Mod 10, .Level Mod 10)
 End With
 End Property
 '-----------------------------------------------------------------------------80
 Private Property Let Message(ByVal str As String)
 With This
-    Let .Worksheet.Range("D22").Value2 = str
+    Let .Worksheet.Range("B21").Value2 = str
 End With
 End Property
 '=============================================================================80
@@ -176,13 +176,16 @@ With This
     
     With .Worksheet
         Call .Unprotect
-        Call .Range("A9").Select
-        Let .Range("A1:AC32").RowHeight = RowHeight
-        Let .Range("A1:AC32").ColumnWidth = ColumnWidth
-        Let .Range("A8:B10").EntireRow.Hidden = True
-        Let .Range("A8:B10").EntireColumn.Hidden = True
-        'Let .Range("33:1048576").EntireRow.Hidden = True
-        'Let .Range("AD:XFD").EntireColumn.Hidden = True
+        Call .Range("A1").Select
+        With .Range("A1:AA31")
+            Let .RowHeight = RowHeight
+            Let .ColumnWidth = ColumnWidth
+        End With
+        ' Make the adjacent row and column largest so as to draw less thing on the screen
+        Let .Range("AB:AB").ColumnWidth = 255
+        Let .Range("32:32").RowHeight = 409
+        ' Hide the top two rows according to guideline
+        Let .Range("8:9").EntireRow.Hidden = True
         Call .Protect(, True, True, True, , True)
     End With
     
@@ -193,15 +196,15 @@ With This
         Call SetBoundaryBlocks
         Set .IncomingShapes = New Collection
         Call AddBag
-        Set .Held = Tetris.GetTetris(.Worksheet, "G12", 2, 4, True)
+        Set .Held = Tetris.GetTetris(.Worksheet, "E11", 2, 4, True)
         ReDim .Nexts(1 To 6) As Tetris
         
-        Set .Nexts(1) = Tetris.GetTetris(.Worksheet, "Y12", 2, 4, True)
-        Set .Nexts(2) = Tetris.GetTetris(.Worksheet, "Y15", 2, 4, True)
-        Set .Nexts(3) = Tetris.GetTetris(.Worksheet, "Y18", 2, 4, True)
-        Set .Nexts(4) = Tetris.GetTetris(.Worksheet, "Y21", 2, 4, True)
-        Set .Nexts(5) = Tetris.GetTetris(.Worksheet, "Y24", 2, 4, True)
-        Set .Nexts(6) = Tetris.GetTetris(.Worksheet, "Y27", 2, 4, True)
+        Set .Nexts(1) = Tetris.GetTetris(.Worksheet, "W11", 2, 4, True)
+        Set .Nexts(2) = Tetris.GetTetris(.Worksheet, "W14", 2, 4, True)
+        Set .Nexts(3) = Tetris.GetTetris(.Worksheet, "W17", 2, 4, True)
+        Set .Nexts(4) = Tetris.GetTetris(.Worksheet, "W20", 2, 4, True)
+        Set .Nexts(5) = Tetris.GetTetris(.Worksheet, "W23", 2, 4, True)
+        Set .Nexts(6) = Tetris.GetTetris(.Worksheet, "W26", 2, 4, True)
     End If
     
     Call DrawAll
@@ -225,9 +228,6 @@ With This
     Do Until GetAsyncKeyState(KeyCodeConstants.vbKeyEscape)
         DoEvents
         
-        Call .Worksheet.Range("A9").Select
-        Call ClearLines
-        
         Select Case True
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyEscape) And &H8000
                 Let Message = "End"
@@ -237,11 +237,7 @@ With This
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyH) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyH Then
                     Let .LastPressedKey = KeyCodeConstants.vbKeyH
-                    If .IsHeld Then
-                        Let Message = "Already held"
-                    Else
-                        Call Hold
-                    End If
+                    Call Hold
                 End If
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyUp) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyUp Then
@@ -419,24 +415,28 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Hold()
 With This
-    Let .IsHeld = True
-    
-    Call StopGravity
-    Call UnlinkPiece
-    
-    Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
-    Let .HeldShape = .FallingShape
-    
-    If TempShape <> 0 Then
-        Let .FallingShape = TempShape
-        Call Spawn
+    If .IsHeld Then
+        Let Message = "Already held"
     Else
-        Call SpawnIncoming
+        Let .IsHeld = True
+        
+        Call StopGravity
+        Call UnlinkPiece
+        
+        Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
+        Let .HeldShape = .FallingShape
+        
+        If TempShape <> 0 Then
+            Let .FallingShape = TempShape
+            Call Spawn
+        Else
+            Call SpawnIncoming
+        End If
+        
+        Let Message = "Hold"
+        Call .Held.Spawn(.HeldShape)
+        Call StartGravity
     End If
-    
-    Let Message = "Hold"
-    Call .Held.Spawn(.HeldShape)
-    Call StartGravity
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -452,6 +452,7 @@ With This
     Next B
     
     Let Message = Constants.vbNullString
+    Call ClearLines
 End With
 End Sub
 '=============================================================================80

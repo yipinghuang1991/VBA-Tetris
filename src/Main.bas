@@ -16,7 +16,7 @@ Private IsGamePaused As Boolean
 '=============================================================================80
 Public Sub Start()
     If Not HasGameStarted Then
-        Set Tet = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "L9")
+        Set Tet = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "J8")
         Let HasGameStarted = True
         Call Tet.Start
     End If
