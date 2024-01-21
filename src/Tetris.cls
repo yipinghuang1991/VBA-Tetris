@@ -230,7 +230,7 @@ With This
         
         Select Case True
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyEscape) And &H8000
-                Let Message = "Ended"
+                Let Message = "End"
                 Call StopGravity
                 Call Terminate
                 Exit Do
@@ -238,7 +238,7 @@ With This
                 If .LastPressedKey <> KeyCodeConstants.vbKeyH Then
                     Let .LastPressedKey = KeyCodeConstants.vbKeyH
                     If .IsHeld Then
-                        Let Message = "Already Held"
+                        Let Message = "Already held"
                     Else
                         Call Hold
                     End If
@@ -434,6 +434,7 @@ With This
         Call SpawnIncoming
     End If
     
+    Let Message = "Hold"
     Call .Held.Spawn(.HeldShape)
     Call StartGravity
 End With
@@ -449,6 +450,8 @@ With This
         Set .Matrix(B.X, B.Y).Block = B
         If B.X < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.X
     Next B
+    
+    Let Message = Constants.vbNullString
 End With
 End Sub
 '=============================================================================80
@@ -503,6 +506,7 @@ With This
         Next X
         
         Let .FirstNonEmptyRow = Lines.Count + .FirstNonEmptyRow
+        Let Message = Lines.Count & " line" & IIf(Lines.Count = 1, Constants.vbNullString, "s") & " cleared"
     End If
 End With
 End Sub
