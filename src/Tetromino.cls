@@ -9,6 +9,11 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 '=============================================================================80
+' Tetris
+' Author: Yi-Ping Huang
+' https://github.com/yipinghuang1991/VBA-Tetris
+'=============================================================================80
+'=============================================================================80
 ' Enumeration
 '=============================================================================80
 Public Enum TetrominoShape
@@ -17,7 +22,7 @@ Public Enum TetrominoShape
     T
     J
     L
-    S
+    s
     z
 End Enum
 '=============================================================================80
@@ -168,7 +173,7 @@ Private Function GetTetrominoBlocks(ByVal Shape As TetrominoShape) As Collection
 '                               Call Coll.Add(Block.GetBlock(0, 0))
 '                               Call Coll.Add(Block.GetBlock(0, 1))
 '                               Call Coll.Add(Block.GetBlock(-1, 1))
-        Case TetrominoShape.S, TetrominoShape.z
+        Case TetrominoShape.s, TetrominoShape.z
                                Call Coll.Add(Block.GetBlock(-1, 1))
                                Call Coll.Add(Block.GetBlock(-1, 0))
                                Call Coll.Add(Block.GetBlock(0, 0))
@@ -189,7 +194,7 @@ Select Case Shape
     Case TetrominoShape.T: Let GetTetrominoColor = RGB(128, 0, 128)
     Case TetrominoShape.J: Let GetTetrominoColor = RGB(0, 0, 255)
     Case TetrominoShape.L: Let GetTetrominoColor = RGB(255, 128, 0)
-    Case TetrominoShape.S: Let GetTetrominoColor = RGB(0, 255, 0)
+    Case TetrominoShape.s: Let GetTetrominoColor = RGB(0, 255, 0)
     Case TetrominoShape.z: Let GetTetrominoColor = RGB(255, 0, 0)
 End Select
 End Function
