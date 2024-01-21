@@ -32,6 +32,7 @@ Feedbacks are welcome!
 * No exit condition when the pieces pile up to the top
 
 # To Do
+* Change keyboard interception to SetWindowsHookEx, UnhookWindowsHookEx and CallNextHookEx Windows API
 * Improve README.md
 * Implement score and level
 * Add comments
