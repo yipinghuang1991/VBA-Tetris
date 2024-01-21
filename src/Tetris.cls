@@ -87,7 +87,7 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Class_Terminate()
     Call StopGravity
-    'Call OnEnd
+    Call OnEnd
 End Sub
 '=============================================================================80
 ' Read-Only Property
@@ -167,15 +167,23 @@ End Sub
 '-----------------------------------------------------------------------------80
 Public Sub Start()
 With This
-    'Call OnStart
+    Call OnStart
+    
+    With ActiveWindow
+        .DisplayHeadings = False
+        .DisplayGridlines = False
+    End With
     
     With .Worksheet
+        Call .Unprotect
+        Call .Range("A9").Select
         Let .Range("A1:AC32").RowHeight = RowHeight
         Let .Range("A1:AC32").ColumnWidth = ColumnWidth
         Let .Range("A8:B10").EntireRow.Hidden = True
         Let .Range("A8:B10").EntireColumn.Hidden = True
         'Let .Range("33:1048576").EntireRow.Hidden = True
         'Let .Range("AD:XFD").EntireColumn.Hidden = True
+        Call .Protect(, True, True, True, , True)
     End With
     
     Let Level = 1
@@ -230,7 +238,7 @@ With This
                 If .LastPressedKey <> KeyCodeConstants.vbKeyH Then
                     Let .LastPressedKey = KeyCodeConstants.vbKeyH
                     If .IsHeld Then
-                        'Let Message = "Already Held"
+                        Let Message = "Already Held"
                     Else
                         Call Hold
                     End If
@@ -454,11 +462,11 @@ With This
     
     Dim Lines As Collection: Set Lines = New Collection
     Dim RowMoveDownStep() As Long: ReDim RowMoveDownStep(1 To .Height - 1) As Long
-    Dim MoveRow() As Long: ReDim MoveRow(.FirstNonEmptyRow To .Height - 1) As Long
+    'Dim MoveRow() As Long: ReDim MoveRow(.FirstNonEmptyRow To .Height - 1) As Long
     
-    For X = .FirstNonEmptyRow To .Height - 1
-        Let MoveRow(X) = X
-    Next X
+'    For X = .FirstNonEmptyRow To .Height - 1
+'        Let MoveRow(X) = X
+'    Next X
     
     ' Determine row number of lines
     For X = .Height - 1 To .FirstNonEmptyRow Step -1
@@ -478,9 +486,9 @@ With This
         For Each Xv In Lines
             For X = .FirstNonEmptyRow To Xv - 1
                 Let RowMoveDownStep(X) = 1 + RowMoveDownStep(X)
-                Let MoveRow(X) = 1 + MoveRow(X)
+                'Let MoveRow(X) = 1 + MoveRow(X)
             Next X
-            Let MoveRow(X) = 0
+            'Let MoveRow(X) = 0
             Let RowMoveDownStep(Xv) = 0
             ' Delete Row
             For Each C In .Rows(Xv)
@@ -674,19 +682,25 @@ Private Function ShuffleArray(InArray As Variant) As Variant
 End Function
 
 Public Sub OnEnd()
-    Application.PrintCommunication = True
-    Application.EnableEvents = True
-    Application.EnableAnimations = True
-    Application.AskToUpdateLinks = True
-    Application.DisplayAlerts = True
-    Application.Calculation = xlAutomatic
+With Application
+    .DisplayFormulaBar = True
+    .PrintCommunication = True
+    .EnableEvents = True
+    .EnableAnimations = True
+    .AskToUpdateLinks = True
+    .DisplayAlerts = True
+    .Calculation = xlAutomatic
+End With
 End Sub
 
 Public Sub OnStart()
-    Application.PrintCommunication = False
-    Application.EnableEvents = False
-    Application.EnableAnimations = False
-    Application.AskToUpdateLinks = False
-    Application.DisplayAlerts = False
-    Application.Calculation = xlAutomatic
+With Application
+    .DisplayFormulaBar = False
+    .PrintCommunication = False
+    .EnableEvents = False
+    .EnableAnimations = False
+    .AskToUpdateLinks = False
+    .DisplayAlerts = False
+    .Calculation = xlCalculationManual
+End With
 End Sub

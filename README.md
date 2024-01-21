@@ -1,6 +1,6 @@
 Disclaimer: This is a prototype. You may need to use task manager to kill excel when the unexpected happens. DO NOT RUN THIS GAME WITH OTHER UNSAVED EXCEL FILE OPEN. YOU HAVE BEEN WARNED.
 
-I am writing an Tetris using Excel and VBA because why not.
+I am writing a Tetris game using Excel and VBA because why not.
 One distinction of my attempt to others' is that almost everything is calculated when needed.
 Feedbacks are welcome!
 
