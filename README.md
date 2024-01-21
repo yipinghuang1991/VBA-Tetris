@@ -28,12 +28,11 @@ Feedbacks are welcome!
 * View 6 incoming shapes
 
 # What's Broken
-* You can hold piece repetitively
 * Excel can freeze by unknown reasons
+* No exit condition when the pieces pile up to the top
 
 # To Do
 * Improve README.md
-* End game screen (when new piece cannot spawn, nothing happen)
 * Implement score and level
 * Add comments
 * Add setting panel
