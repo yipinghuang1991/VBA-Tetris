@@ -4,6 +4,9 @@ I am writing an Tetris using Excel and VBA because why not.
 One distinction of my attempt to others' is that almost everything is calculated when needed.
 Feedbacks are welcome!
 
+# Screenshot
+![Screenshot](https://raw.githubusercontent.com/yipinghuang1991/VBA-Tetris/main/src/screenshot.png)
+
 # Requirement
 * Windows 10 64bit (Not tested on other platform)
 * 64bit Microsoft Excel from 2016 up (32bit not tested)
