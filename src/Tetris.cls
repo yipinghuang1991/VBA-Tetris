@@ -17,8 +17,8 @@ Option Explicit
 ' Windows API
 '=============================================================================80
 #If VBA7 Then
-    Private Declare PtrSafe Function SetTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
-    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hWnd As LongPtr, ByVal nIDEvent As LongPtr) As Long
+    Private Declare PtrSafe Function SetTimer Lib "user32" (ByVal hwnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
+    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hwnd As LongPtr, ByVal nIDEvent As LongPtr) As Long
 #Else
     Private Declare Function SetTimer Lib "user32" (ByVal hwnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long) As Long
     Private Declare Function KillTimer Lib "user32" (ByVal hwnd As Long, ByVal nIDEvent As Long) As Long
@@ -80,6 +80,8 @@ Private Type Variable
     PieceStayTime As Double
     LastPressedKey As Integer
     LastKeyPressedTime As Single
+    
+    IsRunning As Boolean
 End Type
 '-----------------------------------------------------------------------------80
 Private This As Variable
@@ -87,12 +89,13 @@ Private This As Variable
 ' Event
 '=============================================================================80
 Private Sub Class_Initialize()
+    Call SpeedUp(True)
     Set This.ChangedCells = New Dictionary
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Class_Terminate()
     Call StopGravity
-    Call OnEnd
+    Call SpeedUp(False)
 End Sub
 '=============================================================================80
 ' Read-Only Property
@@ -172,8 +175,6 @@ End Sub
 '-----------------------------------------------------------------------------80
 Public Sub Start()
 With This
-    Call OnStart
-    
     With ActiveWindow
         .DisplayHeadings = False
         .DisplayGridlines = False
@@ -225,23 +226,21 @@ With This
     
     Let Message = "Started"
     
-    Call SpawnIncoming
+    Call SpawnIncoming(True, True)
     Call StartGravity
+    Let .IsRunning = True
     Call GameLoop
 End With
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub GameLoop()
 With This
-    Do Until GetAsyncKeyState(KeyCodeConstants.vbKeyEscape)
+    Do While .IsRunning
         DoEvents
         
         Select Case True
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyEscape) And &H8000
-                Let Message = "End"
-                Call StopGravity
-                Call Terminate
-                Exit Do
+                Let .IsRunning = False
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyH) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyH Then
                     Let .LastPressedKey = KeyCodeConstants.vbKeyH
@@ -249,48 +248,41 @@ With This
                 End If
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyUp) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyUp Then
-                    Let .LastKeyPressedTime = timer()
+                    Let .LastKeyPressedTime = Timer()
                     Let .LastPressedKey = KeyCodeConstants.vbKeyUp
-                    Call RotateCW
-                    Call DrawChanged
+                    Call RotateCW(True, True)
                 End If
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyRight) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyRight Then
-                    Let .LastKeyPressedTime = timer()
+                    Let .LastKeyPressedTime = Timer()
                     Let .LastPressedKey = KeyCodeConstants.vbKeyRight
-                    Call MoveRight
-                    Call DrawChanged
+                    Call MoveRight(True, True)
                 Else
-                    If timer - .LastKeyPressedTime >= 0.2 Then
+                    If Timer - .LastKeyPressedTime >= 0.2 Then
                         Call Sleep(10)
-                        Call MoveRight
-                        Call DrawChanged
+                        Call MoveRight(True, True)
                     End If
                 End If
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyDown) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyDown Then
-                    Let .LastKeyPressedTime = timer()
+                    Let .LastKeyPressedTime = Timer()
                     Let .LastPressedKey = KeyCodeConstants.vbKeyDown
-                    Call MoveDown
-                    Call DrawChanged
+                    Call MoveDown(True, True)
                 Else
-                    If timer - .LastKeyPressedTime >= 0.2 Then
+                    If Timer - .LastKeyPressedTime >= 0.2 Then
                         Call Sleep(10)
-                        Call MoveDown
-                        Call DrawChanged
+                        Call MoveDown(True, True)
                     End If
                 End If
             Case GetAsyncKeyState(KeyCodeConstants.vbKeyLeft) And &H8000
                 If .LastPressedKey <> KeyCodeConstants.vbKeyLeft Then
-                    Let .LastKeyPressedTime = timer()
+                    Let .LastKeyPressedTime = Timer()
                     Let .LastPressedKey = KeyCodeConstants.vbKeyLeft
-                    Call MoveLeft
-                    Call DrawChanged
+                    Call MoveLeft(True, True)
                 Else
-                    If timer - .LastKeyPressedTime >= 0.2 Then
+                    If Timer - .LastKeyPressedTime >= 0.2 Then
                         Call Sleep(10)
-                        Call MoveLeft
-                        Call DrawChanged
+                        Call MoveLeft(True, True)
                     End If
                 End If
             Case Else
@@ -299,6 +291,10 @@ With This
                 End If
         End Select
     Loop
+    
+    Let Message = "End"
+    Call StopGravity
+    Call Terminate
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -389,79 +385,6 @@ Private Sub AddBag()
     For Each v In ShuffleArray(Array(1, 2, 3, 4, 5, 6, 7))
         Call This.IncomingShapes.Add(v)
     Next v
-End Sub
-'-----------------------------------------------------------------------------80
-Public Sub Spawn(Optional ByVal Shape As TetrominoShape)
-With This
-    If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call UnlinkPiece
-    If Shape <> 0 Then Let .FallingShape = Shape
-    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = TetrominoShape.O, 1, 2), IIf(.IsShowcase, 2, 6))
-    Call LinkPiece
-    Call DrawChanged
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub SpawnIncoming()
-With This
-    Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = TetrominoShape.O, 1, 2), IIf(.IsShowcase, 2, 6))
-    If Not IsTestPieceOverlapped Then
-        Let .FallingShape = .IncomingShapes(1)
-        Call .IncomingShapes.Remove(1)
-        If .IncomingShapes.Count = 6 Then Call AddBag
-        
-        Dim k As Long
-        For k = 1 To 6
-            Call .Nexts(k).Spawn(.IncomingShapes(k))
-        Next k
-        
-        Call Spawn
-    Else
-        Debug.Print "Cannot spawn."
-    End If
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub Hold()
-With This
-    If .IsHeld Then
-        Let Message = "Already held"
-    Else
-        Let .IsHeld = True
-        
-        Call StopGravity
-        Call UnlinkPiece
-        
-        Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
-        Let .HeldShape = .FallingShape
-        
-        If TempShape <> 0 Then
-            Let .FallingShape = TempShape
-            Call Spawn
-        Else
-            Call SpawnIncoming
-        End If
-        
-        Let Message = "Hold"
-        Call .Held.Spawn(.HeldShape)
-        Call StartGravity
-    End If
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub Ground()
-With This
-    Let .IsHeld = False
-    
-    Dim B As Block
-    For Each B In .FallingPiece.Blocks
-        Set B.Parent = Nothing
-        Set .Matrix(B.X, B.Y).Block = B
-        If B.X < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.X
-    Next B
-    
-    Let Message = Constants.vbNullString
-    Call ClearLines
-End With
 End Sub
 '=============================================================================80
 ' Method: Clearing
@@ -564,10 +487,11 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub StartGravity()
 With This
-    Call MoveDown
+    Call MoveDown(True, True)
     
     If .GravityTimer = 0 Then
         Let .GravityTimer = SetTimer(0, 0, .PieceStayTime, AddressOf GravityDropMain)
+        'Debug.Print "Gravity started"
     Else
         Debug.Print "Trying to override gravity timer."
     End If
@@ -577,6 +501,7 @@ End Sub
 Public Sub StopGravity()
     If KillTimer(0, This.GravityTimer) Then
         Let This.GravityTimer = 0
+        'Debug.Print "Gravity stopped"
     Else
         Debug.Print "Failed to kill gravity timer."
     End If
@@ -584,59 +509,155 @@ End Sub
 '=============================================================================80
 ' Method: Movements
 '=============================================================================80
-Private Sub MoveDown()
-With This
-    Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Move(1, 0)
-    If Not IsTestPieceOverlapped() Then
-        Call AcceptMovement
-    Else
-        Call Ground
-        Call SpawnIncoming
-    End If
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub MoveLeft()
-With This
-    Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Move(0, -1)
-    If Not IsTestPieceOverlapped() Then Call AcceptMovement
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub MoveRight()
-With This
-    Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Move(0, 1)
-    If Not IsTestPieceOverlapped() Then Call AcceptMovement
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub RotateCW()
-With This
-    Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Rotate(-1)
-    If Not IsTestPieceOverlapped() Then Call AcceptMovement
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub RotateCCW()
-With This
-    Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Rotate(1)
-    If Not IsTestPieceOverlapped() Then Call AcceptMovement
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub AcceptMovement()
+Private Sub AcceptTestPiece(Optional ByVal Draw As Boolean)
 With This
     Call UnlinkPiece
     Set .FallingPiece = .TestPiece
     Call LinkPiece
+    If Draw Then Call DrawChanged
+End With
+End Sub
+'-----------------------------------------------------------------------------80
+Private Function RotateCW(Optional ByVal AcceptOnSuccess As Boolean, Optional ByVal DrawOnSuccess As Boolean) As Boolean
+With This
+    Set .TestPiece = .FallingPiece.Copy
+    Call .TestPiece.Rotate(-1)
+    If Not IsTestPieceOverlapped() Then
+        Let RotateCW = True
+        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+    End If
+End With
+End Function
+'-----------------------------------------------------------------------------80
+Private Function RotateCCW(Optional ByVal AcceptOnSuccess As Boolean, Optional ByVal DrawOnSuccess As Boolean) As Boolean
+With This
+    Set .TestPiece = .FallingPiece.Copy
+    Call .TestPiece.Rotate(1)
+    If Not IsTestPieceOverlapped() Then
+        Let RotateCCW = True
+        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+    End If
+End With
+End Function
+'-----------------------------------------------------------------------------80
+Private Function MoveLeft(Optional ByVal AcceptOnSuccess As Boolean, Optional ByVal DrawOnSuccess As Boolean) As Boolean
+With This
+    Set .TestPiece = .FallingPiece.Copy
+    Call .TestPiece.Move(0, -1)
+    If Not IsTestPieceOverlapped() Then
+        Let MoveLeft = True
+        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+    End If
+End With
+End Function
+'-----------------------------------------------------------------------------80
+Private Function MoveRight(Optional ByVal AcceptOnSuccess As Boolean, Optional ByVal DrawOnSuccess As Boolean) As Boolean
+With This
+    Set .TestPiece = .FallingPiece.Copy
+    Call .TestPiece.Move(0, 1)
+    If Not IsTestPieceOverlapped() Then
+        Let MoveRight = True
+        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+    End If
+End With
+End Function
+'-----------------------------------------------------------------------------80
+Private Function MoveDown(Optional ByVal AcceptOnSuccess As Boolean, Optional ByVal DrawOnSuccess As Boolean) As Boolean
+With This
+    Set .TestPiece = .FallingPiece.Copy
+    Call .TestPiece.Move(1, 0)
+    If Not IsTestPieceOverlapped() Then
+        Let MoveDown = True
+        If AcceptOnSuccess Then
+            Call AcceptTestPiece(DrawOnSuccess)
+        End If
+    Else
+        Call Ground
+        Call SpawnIncoming(True, True)
+    End If
+End With
+End Function
+'-----------------------------------------------------------------------------80
+Private Sub Ground()
+With This
+    Let .IsHeld = False
+    
+    Dim B As Block
+    For Each B In .FallingPiece.Blocks
+        Set B.Parent = Nothing
+        Set .Matrix(B.X, B.Y).Block = B
+        If B.X < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.X
+    Next B
+    'Call StopGravity
+    'Stop
+    Let Message = Constants.vbNullString
+    Call ClearLines
+End With
+End Sub
+'-----------------------------------------------------------------------------80
+Private Function SpawnIncoming(Optional ByVal AcceptOnSuccess As Boolean, Optional ByVal DrawOnSuccess As Boolean) As Boolean
+With This
+    Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = TetrominoShape.O, 1, 2), IIf(.IsShowcase, 2, 6))
+    
+    If Not IsTestPieceOverlapped() Then
+        Let SpawnIncoming = True
+        If AcceptOnSuccess Then
+            Let .FallingShape = .IncomingShapes(1)
+            Call .IncomingShapes.Remove(1)
+            If .IncomingShapes.Count = 6 Then Call AddBag
+        
+            Dim k As Long
+            For k = 1 To 6
+                Call .Nexts(k).Spawn(.IncomingShapes(k))
+            Next k
+            
+            Call Spawn
+            'Call AcceptTestPiece(DrawOnSuccess)
+        End If
+    Else
+        Debug.Print "Cannot spawn."
+    End If
+End With
+End Function
+'-----------------------------------------------------------------------------80
+Public Sub Spawn(Optional ByVal Shape As TetrominoShape)
+With This
+    If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call UnlinkPiece
+    If Shape <> 0 Then Let .FallingShape = Shape
+    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = TetrominoShape.O, 1, 2), IIf(.IsShowcase, 2, 6))
+    Call LinkPiece
     Call DrawChanged
 End With
 End Sub
+'-----------------------------------------------------------------------------80
+Private Function Hold() As Boolean
+With This
+    If .IsHeld Then
+        Let Message = "Already held"
+    Else
+        Let .IsHeld = True
+        
+        Call StopGravity
+        Call UnlinkPiece
+        
+        Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
+        Let .HeldShape = .FallingShape
+        
+        If TempShape <> 0 Then
+            Let .FallingShape = TempShape
+            Call Spawn
+        Else
+            Call SpawnIncoming(True, True)
+        End If
+        
+        Let Message = "Hold"
+        Call .Held.Spawn(.HeldShape)
+        Call StartGravity
+        
+        Let Hold = True
+    End If
+End With
+End Function
 '=============================================================================80
 ' Helper Function
 '=============================================================================80
@@ -664,11 +685,13 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub UnlinkPiece()
 With This
-    Dim B As Block
-    For Each B In .FallingPiece.Blocks
-        Set .Matrix(B.X, B.Y).Block = Nothing
-        Call AddChangedCell(.Matrix(B.X, B.Y))
-    Next B
+    If Not .FallingPiece Is Nothing Then
+        Dim B As Block
+        For Each B In .FallingPiece.Blocks
+            Set .Matrix(B.X, B.Y).Block = Nothing
+            Call AddChangedCell(.Matrix(B.X, B.Y))
+        Next B
+    End If
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -693,27 +716,18 @@ Private Function ShuffleArray(InArray As Variant) As Variant
     
     Let ShuffleArray = Arr
 End Function
-
-Public Sub OnEnd()
-With Application
-    .DisplayFormulaBar = True
-    .PrintCommunication = True
-    .EnableEvents = True
-    .EnableAnimations = True
-    .AskToUpdateLinks = True
-    .DisplayAlerts = True
-    .Calculation = xlAutomatic
-End With
-End Sub
-
-Public Sub OnStart()
-With Application
-    .DisplayFormulaBar = False
-    .PrintCommunication = False
-    .EnableEvents = False
-    .EnableAnimations = False
-    .AskToUpdateLinks = False
-    .DisplayAlerts = False
-    .Calculation = xlCalculationManual
+'-----------------------------------------------------------------------------80
+Private Sub SpeedUp(ByVal Toggle As Boolean, Optional ByVal Calc As Variant)
+With Excel.Application
+    Let .AskToUpdateLinks = Not Toggle
+    Let .DisplayAlerts = Not Toggle
+    Let .DisplayFormulaBar = Not Toggle
+    Let .DisplayStatusBar = Not Toggle
+    Let .EnableAnimations = Not Toggle
+    Let .EnableEvents = Not Toggle
+    Let .PrintCommunication = Not Toggle
+    'Let .ScreenUpdating = Not toggle
+    Let .Calculation = IIf(Toggle, xlCalculationManual, _
+                       IIf(IsMissing(Calc), xlCalculationAutomatic, Calc))
 End With
 End Sub
