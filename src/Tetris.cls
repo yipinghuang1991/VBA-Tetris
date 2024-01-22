@@ -33,7 +33,8 @@ Const BackgroundColor As Long = 0
 '=============================================================================80
 Private Type Variable
 ' Set Up
-    GameState As Long ' -1: Paused, 0: Not started, 1: Ongoing
+    ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
+    GameState As Long
     Worksheet As Worksheet
     IsShowcase As Boolean
     Height As Long
@@ -42,32 +43,29 @@ Private Type Variable
     Board As Range
     Matrix() As Cell
     Rows() As Variant
-    
+    FirstNonEmptyRow As Long
+    ' Object
     ChangedCells As Dictionary
     BoundaryBlocks As Collection
-    
-    FirstNonEmptyRow As Long
-    
     ' Next
     IncomingShapes As Collection
     Nexts() As Tetris
-        
     ' Hold
     HeldShape As TetrominoShape
     Held As Tetris
     IsHeld As Boolean
-    
+    ' Piece
     FallingShape As TetrominoShape
     FallingPiece As Tetromino
     TestPiece As Tetromino
-    
+    ' Level
     Level As Long
     Score As Long
-    PieceStayTime As Double
+    ' Time
+    PieceStayTime As Long
     LastPressedKey As Integer
-    LastKeyPressedTime As Single
-    
-    LastMoveDownTime As Single
+    LastKeyPressedTime As Long
+    LastMoveDownTime As Long
 End Type
 '-----------------------------------------------------------------------------80
 Private This As Variable
@@ -141,11 +139,13 @@ End Property
 '-----------------------------------------------------------------------------80
 Public Property Let GameState(ByVal GameState As Long)
     Let This.GameState = GameState
-    
+    ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
     Select Case This.GameState
-        Case -1: Let Message = "Paused"
-        Case 0: Let Message = "Ended"
-        Case 1: Let Message = "Resumed"
+        Case -2: Let Message = "Ended"
+        Case -1: Let Message = "Topped Out"
+        Case 0: Let Message = "Paused"
+        Case 1: Let Message = "Started"
+        Case 2: Let Message = "Resumed"
     End Select
 End Property
 '=============================================================================80
@@ -171,7 +171,7 @@ End Function
 '=============================================================================80
 Private Sub AddChangedCell(ByRef ChangedCell As Variant)
     On Error Resume Next
-    Call This.ChangedCells.Add(ChangedCell, Constants.vbNullString)
+    Call This.ChangedCells.Add(ChangedCell, vbNullString)
 End Sub
 '-----------------------------------------------------------------------------80
 Public Sub Start()
@@ -184,10 +184,8 @@ With This
     With .Worksheet
         Call .Unprotect
         Call .Range("A1").Select
-        With .Range("A1:AA31")
-            Let .RowHeight = RowHeight
-            Let .ColumnWidth = ColumnWidth
-        End With
+        Let .Range("A1:AA31").RowHeight = RowHeight
+        Let .Range("A1:AA31").ColumnWidth = ColumnWidth
         ' Make the adjacent row and column largest so as to draw less thing on the screen
         Let .Range("AB:AB").ColumnWidth = 255
         Let .Range("32:32").RowHeight = 409
@@ -198,9 +196,6 @@ With This
         Let .Range("8:9").EntireRow.Hidden = True
         Call .Protect(, True, True, True, , True)
     End With
-    
-    Let Level = 1
-    Let .FirstNonEmptyRow = .Height
     
     If Not .IsShowcase Then
         Call SetBoundaryBlocks
@@ -217,6 +212,7 @@ With This
         Set .Nexts(6) = Tetris.GetTetris(.Worksheet, "W26", 2, 4, True)
     End If
     
+    ' Draw board, hold, and nexts
     Call DrawAll
     Call .Held.DrawAll
     
@@ -225,9 +221,11 @@ With This
         Call Tet.DrawAll
     Next Tet
     
+    ' Some settings
+    Let Level = 1
+    Let GameState = 1
+    Let .FirstNonEmptyRow = .Height
     Call SpawnIncoming(True, True)
-    Let .GameState = 1
-    Let Message = "Started"
     Let .LastMoveDownTime = TimerInMilliseconds()
     Call GameLoop
 End With
@@ -238,63 +236,59 @@ With This
     Dim Time As Long, LastRepeatTime As Long
     Const RepeatDelay As Long = 200
     Const ReciprocalOfRepeatRate As Long = 35
-    
-    Do While .GameState <> 0
+    ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
+    Do While .GameState >= 0
         DoEvents
         
-        If .GameState = 1 Then
+        If .GameState > 0 Then
             Let Time = TimerInMilliseconds()
             If Time - .LastMoveDownTime >= .PieceStayTime Then
                 Call MoveDown(True, True)
                 Let .LastMoveDownTime = Time
             Else
                 Select Case True
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyEscape) And &H8000
+                    Case GetAsyncKeyState(vbKeyEscape) And &H8000
+                        Let GameState = -2
+                    Case GetAsyncKeyState(vbKeyP) And &H8000
                         Let GameState = 0
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyP) And &H8000
-                        Let GameState = -1
                     ' Shift and C are to hold.
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyShift) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyShift Then
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyShift
+                    Case GetAsyncKeyState(vbKeyShift) And &H8000
+                        If .LastPressedKey <> vbKeyShift Then
+                            Let .LastPressedKey = vbKeyShift
                             Call Hold
                         End If
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyC) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyC Then
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyC
+                    Case GetAsyncKeyState(vbKeyC) And &H8000
+                        If .LastPressedKey <> vbKeyC Then
+                            Let .LastPressedKey = vbKeyC
                             Call Hold
                         End If
                     ' Up arrow and X are to rotate clockwise.
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyUp) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyUp Then
-                            Let .LastKeyPressedTime = TimerInMilliseconds()
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyUp
+                    Case GetAsyncKeyState(vbKeyUp) And &H8000
+                        If .LastPressedKey <> vbKeyUp Then
+                            Let .LastPressedKey = vbKeyUp
                             Call RotateCW(True, True)
                         End If
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyX) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyX Then
-                            Let .LastKeyPressedTime = TimerInMilliseconds()
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyX
+                    Case GetAsyncKeyState(vbKeyX) And &H8000
+                        If .LastPressedKey <> vbKeyX Then
+                            Let .LastPressedKey = vbKeyX
                             Call RotateCW(True, True)
                         End If
                     ' Ctrl and Z are to rotate counterclockwise.
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyControl) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyControl Then
-                            Let .LastKeyPressedTime = TimerInMilliseconds()
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyControl
+                    Case GetAsyncKeyState(vbKeyControl) And &H8000
+                        If .LastPressedKey <> vbKeyControl Then
+                            Let .LastPressedKey = vbKeyControl
                             Call RotateCCW(True, True)
                         End If
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyZ) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyZ Then
-                            Let .LastKeyPressedTime = TimerInMilliseconds()
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyZ
+                    Case GetAsyncKeyState(vbKeyZ) And &H8000
+                        If .LastPressedKey <> vbKeyZ Then
+                            Let .LastPressedKey = vbKeyZ
                             Call RotateCCW(True, True)
                         End If
                     ' Left, right, and down arrows are the same as on the console.
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyLeft) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyLeft Then
+                    Case GetAsyncKeyState(vbKeyLeft) And &H8000
+                        If .LastPressedKey <> vbKeyLeft Then
                             Let .LastKeyPressedTime = TimerInMilliseconds()
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyLeft
+                            Let .LastPressedKey = vbKeyLeft
                             Call MoveLeft(True, True)
                         Else
                             Let Time = TimerInMilliseconds()
@@ -305,10 +299,10 @@ With This
                                 End If
                             End If
                         End If
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyRight) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyRight Then
+                    Case GetAsyncKeyState(vbKeyRight) And &H8000
+                        If .LastPressedKey <> vbKeyRight Then
                             Let .LastKeyPressedTime = TimerInMilliseconds()
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyRight
+                            Let .LastPressedKey = vbKeyRight
                             Call MoveRight(True, True)
                         Else
                             Let Time = TimerInMilliseconds()
@@ -319,10 +313,10 @@ With This
                                 End If
                             End If
                         End If
-                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyDown) And &H8000
-                        If .LastPressedKey <> KeyCodeConstants.vbKeyDown Then
+                    Case GetAsyncKeyState(vbKeyDown) And &H8000
+                        If .LastPressedKey <> vbKeyDown Then
                             Let .LastKeyPressedTime = TimerInMilliseconds()
-                            Let .LastPressedKey = KeyCodeConstants.vbKeyDown
+                            Let .LastPressedKey = vbKeyDown
                             Call MoveDown(True, True)
                         Else
                             Let Time = TimerInMilliseconds()
@@ -334,15 +328,12 @@ With This
                             End If
                         End If
                     Case Else
-                        If .LastPressedKey <> 0 Then
-                            Let .LastPressedKey = 0
-                        End If
+                        If .LastPressedKey <> 0 Then Let .LastPressedKey = 0
                 End Select
             End If
-        ElseIf .GameState = -1 Then
-            If GetAsyncKeyState(KeyCodeConstants.vbKeyR) And &H8000 Then
-                Let GameState = 1
-            End If
+        Else ' .GameState = 0
+            If GetAsyncKeyState(vbKeyR) And &H8000 Then _
+                Let GameState = 2
         End If
     Loop
     
@@ -419,6 +410,8 @@ End Sub
 '-----------------------------------------------------------------------------80
 Public Sub DrawChanged()
 With This
+    'Let Application.ScreenUpdating = False
+    
     If .ChangedCells.Count Then
         Dim C As Variant
         For Each C In .ChangedCells.Keys
@@ -427,6 +420,8 @@ With This
         
         Set .ChangedCells = New Dictionary
     End If
+    
+    'Let Application.ScreenUpdating = True
 End With
 End Sub
 '=============================================================================80
@@ -490,7 +485,7 @@ With This
         Next X
         
         Let .FirstNonEmptyRow = Lines.Count + .FirstNonEmptyRow
-        Let Message = Lines.Count & " line" & IIf(Lines.Count = 1, Constants.vbNullString, "s") & " cleared"
+        Let Message = Lines.Count & " line" & IIf(Lines.Count = 1, vbNullString, "s") & " cleared"
     End If
 End With
 End Sub
@@ -529,10 +524,6 @@ With This
     Next C
 End With
 End Sub
-'=============================================================================80
-' Method: Gravity Drop
-'=============================================================================80
-
 '=============================================================================80
 ' Method: Movements
 '=============================================================================80
@@ -615,9 +606,8 @@ With This
         Set .Matrix(B.X, B.Y).Block = B
         If B.X < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.X
     Next B
-    'Call StopGravity
-    'Stop
-    Let Message = Constants.vbNullString
+    
+    Let Message = vbNullString
     Call ClearLines
 End With
 End Sub
@@ -642,7 +632,7 @@ With This
             'Call AcceptTestPiece(DrawOnSuccess)
         End If
     Else
-        Let GameState = 0
+        Let GameState = -1
     End If
 End With
 End Function
@@ -720,6 +710,10 @@ With This
 End With
 End Sub
 '-----------------------------------------------------------------------------80
+Private Function TimerInMilliseconds() As Long
+    Let TimerInMilliseconds = 1000 * Timer
+End Function
+'-----------------------------------------------------------------------------80
 ' http://www.cpearson.com/excel/ShuffleArray.aspx
 Private Function ShuffleArray(InArray As Variant) As Variant
     Dim N As Long, k As Long, L As Long
@@ -747,7 +741,7 @@ With Excel.Application
     Let .AskToUpdateLinks = Not Toggle
     Let .DisplayAlerts = Not Toggle
     Let .DisplayFormulaBar = Not Toggle
-    Let .DisplayStatusBar = Not Toggle
+    'Let .DisplayStatusBar = Not Toggle
     Let .EnableAnimations = Not Toggle
     Let .EnableEvents = Not Toggle
     Let .PrintCommunication = Not Toggle
@@ -756,7 +750,3 @@ With Excel.Application
                        IIf(IsMissing(Calc), xlCalculationAutomatic, Calc))
 End With
 End Sub
-'-----------------------------------------------------------------------------80
-Private Function TimerInMilliseconds() As Long
-    Let TimerInMilliseconds = 1000 * Timer
-End Function
