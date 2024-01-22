@@ -9,15 +9,12 @@ Option Explicit
 ' Variable
 '=============================================================================80
 Private Tet As Tetris
-Private HasGameStarted As Boolean
-Private IsGamePaused As Boolean
 '=============================================================================80
 ' Methods
 '=============================================================================80
-Public Sub Start()
-    If Not HasGameStarted Then
+Public Sub ButtonClick()
+    If Tet Is Nothing Then
         Set Tet = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "J8")
-        Let HasGameStarted = True
         Call Tet.Start
     End If
 End Sub
@@ -26,11 +23,3 @@ Public Sub Terminate()
     Set Tet = Nothing
     End
 End Sub
-'=============================================================================80
-' Helper Function
-'=============================================================================80
-Public Sub GravityDropMain()
-    Call Tet.ResetGravity
-End Sub
-
-

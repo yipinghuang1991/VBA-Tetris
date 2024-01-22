@@ -28,6 +28,8 @@ Option Explicit
 Const RowHeight As Double = 14.4
 Const ColumnWidth As Long = 2
 Const BackgroundColor As Long = 0
+Const RepeatDelay As Long = 200
+Const ReciprocalOfRepeatRate As Long = 35
 '=============================================================================80
 ' Variable Container
 '=============================================================================80
@@ -64,7 +66,6 @@ Private Type Variable
     ' Time
     PieceStayTime As Long
     LastPressedKey As Integer
-    LastKeyPressedTime As Long
     LastMoveDownTime As Long
 End Type
 '-----------------------------------------------------------------------------80
@@ -226,25 +227,23 @@ With This
     Let GameState = 1
     Let .FirstNonEmptyRow = .Height
     Call SpawnIncoming(True, True)
-    Let .LastMoveDownTime = TimerInMilliseconds()
     Call GameLoop
 End With
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub GameLoop()
 With This
-    Dim Time As Long, LastRepeatTime As Long
-    Const RepeatDelay As Long = 200
-    Const ReciprocalOfRepeatRate As Long = 35
+    Dim Time As Long, LastRepeatTime As Long, LastKeyPressedTime As Long
+    Dim LastMoveDownTime: Let LastMoveDownTime = TimerInMilliseconds()
     ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
     Do While .GameState >= 0
         DoEvents
         
         If .GameState > 0 Then
             Let Time = TimerInMilliseconds()
-            If Time - .LastMoveDownTime >= .PieceStayTime Then
+            If Time - LastMoveDownTime >= .PieceStayTime Then
                 Call MoveDown(True, True)
-                Let .LastMoveDownTime = Time
+                Let LastMoveDownTime = Time
             Else
                 Select Case True
                     Case GetAsyncKeyState(vbKeyEscape) And &H8000
@@ -287,12 +286,12 @@ With This
                     ' Left, right, and down arrows are the same as on the console.
                     Case GetAsyncKeyState(vbKeyLeft) And &H8000
                         If .LastPressedKey <> vbKeyLeft Then
-                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let LastKeyPressedTime = TimerInMilliseconds()
                             Let .LastPressedKey = vbKeyLeft
                             Call MoveLeft(True, True)
                         Else
                             Let Time = TimerInMilliseconds()
-                            If Time - .LastKeyPressedTime >= RepeatDelay Then
+                            If Time - LastKeyPressedTime >= RepeatDelay Then
                                 If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
                                     Let LastRepeatTime = Time
                                     Call MoveLeft(True, True)
@@ -301,12 +300,12 @@ With This
                         End If
                     Case GetAsyncKeyState(vbKeyRight) And &H8000
                         If .LastPressedKey <> vbKeyRight Then
-                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let LastKeyPressedTime = TimerInMilliseconds()
                             Let .LastPressedKey = vbKeyRight
                             Call MoveRight(True, True)
                         Else
                             Let Time = TimerInMilliseconds()
-                            If Time - .LastKeyPressedTime >= RepeatDelay Then
+                            If Time - LastKeyPressedTime >= RepeatDelay Then
                                 If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
                                     Let LastRepeatTime = Time
                                     Call MoveRight(True, True)
@@ -315,12 +314,12 @@ With This
                         End If
                     Case GetAsyncKeyState(vbKeyDown) And &H8000
                         If .LastPressedKey <> vbKeyDown Then
-                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let LastKeyPressedTime = TimerInMilliseconds()
                             Let .LastPressedKey = vbKeyDown
                             Call MoveDown(True, True)
                         Else
                             Let Time = TimerInMilliseconds()
-                            If Time - .LastKeyPressedTime >= RepeatDelay Then
+                            If Time - LastKeyPressedTime >= RepeatDelay Then
                                 If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
                                     Let LastRepeatTime = Time
                                     Call MoveDown(True, True)
