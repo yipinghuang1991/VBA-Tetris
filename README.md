@@ -12,19 +12,21 @@ Feedbacks are welcome!
 * (Not required) Do not have other Excel running at the same time
 
 # How To Play
-1. Choose to enable macros when opening the file
-2. Press START buttom to start the game
-3. Press (and hold) Left arrow key to move left
-4. Press (and hold) Right arrow key to move right
-5. Press (and hold) Down arrow key to move downwards
-6. Press Up arrow or X to rotate clockwise
-7. Press Control or Z to rotate counterclockwise
-7. Press Shift or C to hold piece
-8. Press ESC to end game
+ 1. Choose to enable macros when opening the file
+ 2. Press START buttom to start the game
+ 3. Press (and hold) Left arrow key to move left
+ 4. Press (and hold) Right arrow key to move right
+ 5. Press (and hold) Down arrow key to move downwards
+ 6. Press Space to hard drop
+ 7. Press Up arrow or X to rotate clockwise
+ 8. Press Control or Z to rotate counterclockwise
+ 9. Press Shift or C to hold piece
+10. Press ESC to end game
 
 # What's Working
 * Vanilla Level 1 Tetris game (1000 millisecond gravity)
 * Hold piece
+* Hard drop
 * Pause/Resume
 * View 6 incoming shapes
 * 200 millisecond repeat delay
@@ -34,7 +36,6 @@ Feedbacks are welcome!
 * Implement score and level
 * Add setting panel
 * Add custom keybinding
-* Add hard drop
 * Add kick
 * Add ghost piece
 * Gerenal performance improvement
