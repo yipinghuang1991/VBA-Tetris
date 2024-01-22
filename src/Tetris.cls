@@ -16,25 +16,11 @@ Option Explicit
 '=============================================================================80
 ' Windows API
 '=============================================================================80
-#If VBA7 Then
-    Private Declare PtrSafe Function SetTimer Lib "user32" (ByVal hwnd As LongPtr, ByVal nIDEvent As LongPtr, ByVal uElapse As Long, ByVal lpTimerFunc As LongPtr) As LongPtr
-    Private Declare PtrSafe Function KillTimer Lib "user32" (ByVal hwnd As LongPtr, ByVal nIDEvent As LongPtr) As Long
-#Else
-    Private Declare Function SetTimer Lib "user32" (ByVal hwnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long) As Long
-    Private Declare Function KillTimer Lib "user32" (ByVal hwnd As Long, ByVal nIDEvent As Long) As Long
-#End If
-
 'https://stackoverflow.com/questions/62937869/excel-vba-determine-mouse-location-when-clicking-on-a-cell
 #If VBA7 Then
     Private Declare PtrSafe Function GetAsyncKeyState Lib "user32" (ByVal vKey As Long) As Integer
 #Else
     Private Declare Function GetAsyncKeyState Lib "user32" (ByVal vKey As Long) As Integer
-#End If
-
-#If VBA7 Then
-    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal Milliseconds As LongPtr)
-#Else
-    Private Declare Sub Sleep Lib "kernel32" (ByVal Milliseconds As Long)
 #End If
 '=============================================================================80
 ' Constants
@@ -76,12 +62,12 @@ Private Type Variable
     
     Level As Long
     Score As Long
-    GravityTimer As LongPtr
     PieceStayTime As Double
     LastPressedKey As Integer
     LastKeyPressedTime As Single
     
     IsRunning As Boolean
+    LastMoveDownTime As Single
 End Type
 '-----------------------------------------------------------------------------80
 Private This As Variable
@@ -94,7 +80,6 @@ Private Sub Class_Initialize()
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Class_Terminate()
-    Call StopGravity
     Call SpeedUp(False)
 End Sub
 '=============================================================================80
@@ -227,73 +212,91 @@ With This
     Let Message = "Started"
     
     Call SpawnIncoming(True, True)
-    Call StartGravity
     Let .IsRunning = True
+    Let .LastMoveDownTime = TimerInMilliseconds()
     Call GameLoop
 End With
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub GameLoop()
 With This
+    Dim Time As Long, LastRepeatTime As Long
+    Const RepeatDelay As Long = 200
+    Const ReciprocalOfRepeatRate As Long = 35
+    
     Do While .IsRunning
         DoEvents
         
-        Select Case True
-            Case GetAsyncKeyState(KeyCodeConstants.vbKeyEscape) And &H8000
-                Let .IsRunning = False
-            Case GetAsyncKeyState(KeyCodeConstants.vbKeyH) And &H8000
-                If .LastPressedKey <> KeyCodeConstants.vbKeyH Then
-                    Let .LastPressedKey = KeyCodeConstants.vbKeyH
-                    Call Hold
-                End If
-            Case GetAsyncKeyState(KeyCodeConstants.vbKeyUp) And &H8000
-                If .LastPressedKey <> KeyCodeConstants.vbKeyUp Then
-                    Let .LastKeyPressedTime = Timer()
-                    Let .LastPressedKey = KeyCodeConstants.vbKeyUp
-                    Call RotateCW(True, True)
-                End If
-            Case GetAsyncKeyState(KeyCodeConstants.vbKeyRight) And &H8000
-                If .LastPressedKey <> KeyCodeConstants.vbKeyRight Then
-                    Let .LastKeyPressedTime = Timer()
-                    Let .LastPressedKey = KeyCodeConstants.vbKeyRight
-                    Call MoveRight(True, True)
-                Else
-                    If Timer - .LastKeyPressedTime >= 0.2 Then
-                        Call Sleep(10)
+        Let Time = TimerInMilliseconds()
+        If Time - .LastMoveDownTime >= .PieceStayTime Then
+            Call MoveDown(True, True)
+            Let .LastMoveDownTime = Time
+        Else
+            Select Case True
+                Case GetAsyncKeyState(KeyCodeConstants.vbKeyEscape) And &H8000
+                    Let .IsRunning = False
+                Case GetAsyncKeyState(KeyCodeConstants.vbKeyH) And &H8000
+                    If .LastPressedKey <> KeyCodeConstants.vbKeyH Then
+                        Let .LastPressedKey = KeyCodeConstants.vbKeyH
+                        Call Hold
+                    End If
+                Case GetAsyncKeyState(KeyCodeConstants.vbKeyUp) And &H8000
+                    If .LastPressedKey <> KeyCodeConstants.vbKeyUp Then
+                        Let .LastKeyPressedTime = TimerInMilliseconds()
+                        Let .LastPressedKey = KeyCodeConstants.vbKeyUp
+                        Call RotateCW(True, True)
+                    End If
+                Case GetAsyncKeyState(KeyCodeConstants.vbKeyRight) And &H8000
+                    If .LastPressedKey <> KeyCodeConstants.vbKeyRight Then
+                        Let .LastKeyPressedTime = TimerInMilliseconds()
+                        Let .LastPressedKey = KeyCodeConstants.vbKeyRight
                         Call MoveRight(True, True)
+                    Else
+                        Let Time = TimerInMilliseconds()
+                        If Time - .LastKeyPressedTime >= RepeatDelay Then
+                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                                Let LastRepeatTime = Time
+                                Call MoveRight(True, True)
+                            End If
+                        End If
                     End If
-                End If
-            Case GetAsyncKeyState(KeyCodeConstants.vbKeyDown) And &H8000
-                If .LastPressedKey <> KeyCodeConstants.vbKeyDown Then
-                    Let .LastKeyPressedTime = Timer()
-                    Let .LastPressedKey = KeyCodeConstants.vbKeyDown
-                    Call MoveDown(True, True)
-                Else
-                    If Timer - .LastKeyPressedTime >= 0.2 Then
-                        Call Sleep(10)
+                Case GetAsyncKeyState(KeyCodeConstants.vbKeyDown) And &H8000
+                    If .LastPressedKey <> KeyCodeConstants.vbKeyDown Then
+                        Let .LastKeyPressedTime = TimerInMilliseconds()
+                        Let .LastPressedKey = KeyCodeConstants.vbKeyDown
                         Call MoveDown(True, True)
+                    Else
+                        Let Time = TimerInMilliseconds()
+                        If Time - .LastKeyPressedTime >= RepeatDelay Then
+                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                                Let LastRepeatTime = Time
+                                Call MoveDown(True, True)
+                            End If
+                        End If
                     End If
-                End If
-            Case GetAsyncKeyState(KeyCodeConstants.vbKeyLeft) And &H8000
-                If .LastPressedKey <> KeyCodeConstants.vbKeyLeft Then
-                    Let .LastKeyPressedTime = Timer()
-                    Let .LastPressedKey = KeyCodeConstants.vbKeyLeft
-                    Call MoveLeft(True, True)
-                Else
-                    If Timer - .LastKeyPressedTime >= 0.2 Then
-                        Call Sleep(10)
+                Case GetAsyncKeyState(KeyCodeConstants.vbKeyLeft) And &H8000
+                    If .LastPressedKey <> KeyCodeConstants.vbKeyLeft Then
+                        Let .LastKeyPressedTime = TimerInMilliseconds()
+                        Let .LastPressedKey = KeyCodeConstants.vbKeyLeft
                         Call MoveLeft(True, True)
+                    Else
+                        Let Time = TimerInMilliseconds()
+                        If Time - .LastKeyPressedTime >= RepeatDelay Then
+                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                                Let LastRepeatTime = Time
+                                Call MoveLeft(True, True)
+                            End If
+                        End If
                     End If
-                End If
-            Case Else
-                If .LastPressedKey <> 0 Then
-                    Let .LastPressedKey = 0
-                End If
-        End Select
+                Case Else
+                    If .LastPressedKey <> 0 Then
+                        Let .LastPressedKey = 0
+                    End If
+            End Select
+        End If
     Loop
     
     Let Message = "End"
-    Call StopGravity
     Call Terminate
 End With
 End Sub
@@ -480,32 +483,7 @@ End Sub
 '=============================================================================80
 ' Method: Gravity Drop
 '=============================================================================80
-Public Sub ResetGravity()
-    Call StopGravity
-    Call StartGravity
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub StartGravity()
-With This
-    Call MoveDown(True, True)
-    
-    If .GravityTimer = 0 Then
-        Let .GravityTimer = SetTimer(0, 0, .PieceStayTime, AddressOf GravityDropMain)
-        'Debug.Print "Gravity started"
-    Else
-        Debug.Print "Trying to override gravity timer."
-    End If
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Public Sub StopGravity()
-    If KillTimer(0, This.GravityTimer) Then
-        Let This.GravityTimer = 0
-        'Debug.Print "Gravity stopped"
-    Else
-        Debug.Print "Failed to kill gravity timer."
-    End If
-End Sub
+
 '=============================================================================80
 ' Method: Movements
 '=============================================================================80
@@ -637,7 +615,6 @@ With This
     Else
         Let .IsHeld = True
         
-        Call StopGravity
         Call UnlinkPiece
         
         Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
@@ -652,7 +629,6 @@ With This
         
         Let Message = "Hold"
         Call .Held.Spawn(.HeldShape)
-        Call StartGravity
         
         Let Hold = True
     End If
@@ -731,3 +707,7 @@ With Excel.Application
                        IIf(IsMissing(Calc), xlCalculationAutomatic, Calc))
 End With
 End Sub
+'-----------------------------------------------------------------------------80
+Private Function TimerInMilliseconds() As Long
+    Let TimerInMilliseconds = 1000 * Timer
+End Function
