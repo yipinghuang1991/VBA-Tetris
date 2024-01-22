@@ -1,6 +1,5 @@
-Disclaimer: This is a prototype. You may need to use task manager to kill excel when the unexpected happens. DO NOT RUN THIS GAME WITH OTHER UNSAVED EXCEL FILE OPEN. YOU HAVE BEEN WARNED.
-
-I am writing a Tetris game using Excel and VBA because why not.
+I am writing a Tetris game using Excel and VBA.
+So that you have something to do if the IT policy in your company prevent you do install games.
 One distinction of my attempt to others' is that almost everything is calculated when needed.
 Feedbacks are welcome!
 
@@ -13,34 +12,30 @@ Feedbacks are welcome!
 * (Not required) Do not have other Excel running at the same time
 
 # How To Play
-1. When file is open, choose to accept running macro
-2. Press START buttom to start game
-3. Press (and hold) left arrow key to move left
-4. Press (and hold) right arrow key to move right
-5. Press (and hold) down arrow key to move downwards
-6. Press up arrow key to rotate clockwise
-7. Press H to hold piece
+1. Choose to enable macros when opening the file
+2. Press START buttom to start the game
+3. Press (and hold) Left arrow key to move left
+4. Press (and hold) Right arrow key to move right
+5. Press (and hold) Down arrow key to move downwards
+6. Press Up arrow or X to rotate clockwise
+7. Press Control or Z to rotate counterclockwise
+7. Press Shift or C to hold piece
 8. Press ESC to end game
 
 # What's Working
 * Vanilla Level 1 Tetris game (1000 millisecond gravity)
 * Hold piece
+* Pause/Resume
 * View 6 incoming shapes
-
-# What's Broken
-* Excel can freeze by unknown reasons
-* No exit condition when the pieces pile up to the top
+* 200 millisecond repeat delay
+* 35 millisecond repeat rate
 
 # To Do
-* Change keyboard interception to SetWindowsHookEx, UnhookWindowsHookEx and CallNextHookEx Windows API
-* Improve README.md
 * Implement score and level
-* Add comments
 * Add setting panel
 * Add custom keybinding
-* Add pause
 * Add hard drop
 * Add kick
 * Add ghost piece
-* Try to follow the [Tetris Guideline](https://tetris.fandom.com/wiki/Tetris_Guideline)
 * Gerenal performance improvement
+* Try to follow the [Tetris Guideline](https://tetris.fandom.com/wiki/Tetris_Guideline)

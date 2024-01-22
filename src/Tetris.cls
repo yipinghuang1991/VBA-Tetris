@@ -33,6 +33,7 @@ Const BackgroundColor As Long = 0
 '=============================================================================80
 Private Type Variable
 ' Set Up
+    GameState As Long ' -1: Paused, 0: Not started, 1: Ongoing
     Worksheet As Worksheet
     IsShowcase As Boolean
     Height As Long
@@ -66,7 +67,6 @@ Private Type Variable
     LastPressedKey As Integer
     LastKeyPressedTime As Single
     
-    IsRunning As Boolean
     LastMoveDownTime As Single
 End Type
 '-----------------------------------------------------------------------------80
@@ -131,6 +131,22 @@ Private Property Let Message(ByVal str As String)
 With This
     Let .Worksheet.Range("B21").Value2 = str
 End With
+End Property
+'=============================================================================80
+' Read-Write Property
+'=============================================================================80
+Public Property Get GameState() As Long
+    Let GameState = Self.GameState
+End Property
+'-----------------------------------------------------------------------------80
+Public Property Let GameState(ByVal GameState As Long)
+    Let This.GameState = GameState
+    
+    Select Case This.GameState
+        Case -1: Let Message = "Paused"
+        Case 0: Let Message = "Ended"
+        Case 1: Let Message = "Resumed"
+    End Select
 End Property
 '=============================================================================80
 ' Constructor
@@ -209,10 +225,9 @@ With This
         Call Tet.DrawAll
     Next Tet
     
-    Let Message = "Started"
-    
     Call SpawnIncoming(True, True)
-    Let .IsRunning = True
+    Let .GameState = 1
+    Let Message = "Started"
     Let .LastMoveDownTime = TimerInMilliseconds()
     Call GameLoop
 End With
@@ -224,79 +239,113 @@ With This
     Const RepeatDelay As Long = 200
     Const ReciprocalOfRepeatRate As Long = 35
     
-    Do While .IsRunning
+    Do While .GameState <> 0
         DoEvents
         
-        Let Time = TimerInMilliseconds()
-        If Time - .LastMoveDownTime >= .PieceStayTime Then
-            Call MoveDown(True, True)
-            Let .LastMoveDownTime = Time
-        Else
-            Select Case True
-                Case GetAsyncKeyState(KeyCodeConstants.vbKeyEscape) And &H8000
-                    Let .IsRunning = False
-                Case GetAsyncKeyState(KeyCodeConstants.vbKeyH) And &H8000
-                    If .LastPressedKey <> KeyCodeConstants.vbKeyH Then
-                        Let .LastPressedKey = KeyCodeConstants.vbKeyH
-                        Call Hold
-                    End If
-                Case GetAsyncKeyState(KeyCodeConstants.vbKeyUp) And &H8000
-                    If .LastPressedKey <> KeyCodeConstants.vbKeyUp Then
-                        Let .LastKeyPressedTime = TimerInMilliseconds()
-                        Let .LastPressedKey = KeyCodeConstants.vbKeyUp
-                        Call RotateCW(True, True)
-                    End If
-                Case GetAsyncKeyState(KeyCodeConstants.vbKeyRight) And &H8000
-                    If .LastPressedKey <> KeyCodeConstants.vbKeyRight Then
-                        Let .LastKeyPressedTime = TimerInMilliseconds()
-                        Let .LastPressedKey = KeyCodeConstants.vbKeyRight
-                        Call MoveRight(True, True)
-                    Else
-                        Let Time = TimerInMilliseconds()
-                        If Time - .LastKeyPressedTime >= RepeatDelay Then
-                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
-                                Let LastRepeatTime = Time
-                                Call MoveRight(True, True)
+        If .GameState = 1 Then
+            Let Time = TimerInMilliseconds()
+            If Time - .LastMoveDownTime >= .PieceStayTime Then
+                Call MoveDown(True, True)
+                Let .LastMoveDownTime = Time
+            Else
+                Select Case True
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyEscape) And &H8000
+                        Let GameState = 0
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyP) And &H8000
+                        Let GameState = -1
+                    ' Shift and C are to hold.
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyShift) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyShift Then
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyShift
+                            Call Hold
+                        End If
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyC) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyC Then
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyC
+                            Call Hold
+                        End If
+                    ' Up arrow and X are to rotate clockwise.
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyUp) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyUp Then
+                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyUp
+                            Call RotateCW(True, True)
+                        End If
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyX) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyX Then
+                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyX
+                            Call RotateCW(True, True)
+                        End If
+                    ' Ctrl and Z are to rotate counterclockwise.
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyControl) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyControl Then
+                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyControl
+                            Call RotateCCW(True, True)
+                        End If
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyZ) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyZ Then
+                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyZ
+                            Call RotateCCW(True, True)
+                        End If
+                    ' Left, right, and down arrows are the same as on the console.
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyLeft) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyLeft Then
+                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyLeft
+                            Call MoveLeft(True, True)
+                        Else
+                            Let Time = TimerInMilliseconds()
+                            If Time - .LastKeyPressedTime >= RepeatDelay Then
+                                If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                                    Let LastRepeatTime = Time
+                                    Call MoveLeft(True, True)
+                                End If
                             End If
                         End If
-                    End If
-                Case GetAsyncKeyState(KeyCodeConstants.vbKeyDown) And &H8000
-                    If .LastPressedKey <> KeyCodeConstants.vbKeyDown Then
-                        Let .LastKeyPressedTime = TimerInMilliseconds()
-                        Let .LastPressedKey = KeyCodeConstants.vbKeyDown
-                        Call MoveDown(True, True)
-                    Else
-                        Let Time = TimerInMilliseconds()
-                        If Time - .LastKeyPressedTime >= RepeatDelay Then
-                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
-                                Let LastRepeatTime = Time
-                                Call MoveDown(True, True)
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyRight) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyRight Then
+                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyRight
+                            Call MoveRight(True, True)
+                        Else
+                            Let Time = TimerInMilliseconds()
+                            If Time - .LastKeyPressedTime >= RepeatDelay Then
+                                If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                                    Let LastRepeatTime = Time
+                                    Call MoveRight(True, True)
+                                End If
                             End If
                         End If
-                    End If
-                Case GetAsyncKeyState(KeyCodeConstants.vbKeyLeft) And &H8000
-                    If .LastPressedKey <> KeyCodeConstants.vbKeyLeft Then
-                        Let .LastKeyPressedTime = TimerInMilliseconds()
-                        Let .LastPressedKey = KeyCodeConstants.vbKeyLeft
-                        Call MoveLeft(True, True)
-                    Else
-                        Let Time = TimerInMilliseconds()
-                        If Time - .LastKeyPressedTime >= RepeatDelay Then
-                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
-                                Let LastRepeatTime = Time
-                                Call MoveLeft(True, True)
+                    Case GetAsyncKeyState(KeyCodeConstants.vbKeyDown) And &H8000
+                        If .LastPressedKey <> KeyCodeConstants.vbKeyDown Then
+                            Let .LastKeyPressedTime = TimerInMilliseconds()
+                            Let .LastPressedKey = KeyCodeConstants.vbKeyDown
+                            Call MoveDown(True, True)
+                        Else
+                            Let Time = TimerInMilliseconds()
+                            If Time - .LastKeyPressedTime >= RepeatDelay Then
+                                If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                                    Let LastRepeatTime = Time
+                                    Call MoveDown(True, True)
+                                End If
                             End If
                         End If
-                    End If
-                Case Else
-                    If .LastPressedKey <> 0 Then
-                        Let .LastPressedKey = 0
-                    End If
-            End Select
+                    Case Else
+                        If .LastPressedKey <> 0 Then
+                            Let .LastPressedKey = 0
+                        End If
+                End Select
+            End If
+        ElseIf .GameState = -1 Then
+            If GetAsyncKeyState(KeyCodeConstants.vbKeyR) And &H8000 Then
+                Let GameState = 1
+            End If
         End If
     Loop
     
-    Let Message = "End"
     Call Terminate
 End With
 End Sub
@@ -593,7 +642,7 @@ With This
             'Call AcceptTestPiece(DrawOnSuccess)
         End If
     Else
-        Debug.Print "Cannot spawn."
+        Let GameState = 0
     End If
 End With
 End Function
