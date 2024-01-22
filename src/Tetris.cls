@@ -245,11 +245,17 @@ With This
                 Call MoveDown(True, True)
                 Let LastMoveDownTime = Time
             Else
-                Select Case True
+                Select Case True 'KeyCodeConstants
                     Case GetAsyncKeyState(vbKeyEscape) And &H8000
                         Let GameState = -2
                     Case GetAsyncKeyState(vbKeyP) And &H8000
                         Let GameState = 0
+                    ' Space to hard drop.
+                    Case GetAsyncKeyState(vbKeySpace) And &H8000
+                        If .LastPressedKey <> vbKeySpace Then
+                            Let .LastPressedKey = vbKeySpace
+                            Call HardDrop
+                        End If
                     ' Shift and C are to hold.
                     Case GetAsyncKeyState(vbKeyShift) And &H8000
                         If .LastPressedKey <> vbKeyShift Then
@@ -590,10 +596,23 @@ With This
         End If
     Else
         Call Ground
-        Call SpawnIncoming(True, True)
     End If
 End With
 End Function
+'-----------------------------------------------------------------------------80
+Private Sub HardDrop()
+With This
+    Set .TestPiece = .FallingPiece.Copy
+    
+    Do
+        Call .TestPiece.Move(1, 0)
+    Loop While Not IsTestPieceOverlapped()
+    
+    Call .TestPiece.Move(-1, 0)
+    Call AcceptTestPiece(True)
+    Call Ground
+End With
+End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Ground()
 With This
@@ -608,6 +627,7 @@ With This
     
     Let Message = vbNullString
     Call ClearLines
+    Call SpawnIncoming(True, True)
 End With
 End Sub
 '-----------------------------------------------------------------------------80
