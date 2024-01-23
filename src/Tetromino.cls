@@ -13,6 +13,16 @@ Option Explicit
 ' Author: Yi-Ping Huang
 ' https://github.com/yipinghuang1991/VBA-Tetris
 '=============================================================================80
+' In my implementation, top left most cell of the board has coordinate (1, 1).
+' +X direction is pointing downwards, +Y direction is pointing right.
+' That is, the board has coordinate just like a matrix in the mathematical sense.
+' By the right hand rule, +Z direction is pointing out of the page (screen?).
+' In this convention, to rotate COUNTERCLOCKWISE is to rotating positively.
+' Let the default spawn state be of stance 0.
+' Rotate CCW once be of stance 1, since it rotates 1 * (pi/2) radians.
+' Rotate CCW once more, the stance would be 2, because it rotates 2 * (pi/2) radians.
+' Likewise, rotate CCW once more, the stance would be 3.
+' Finally, rotate CCW the fourth time, the stance would be 0 (= 4 mod 4).
 '=============================================================================80
 ' Enumeration
 '=============================================================================80
@@ -31,6 +41,7 @@ End Enum
 Private Type Variable
     X As Long
     Y As Long
+    Stance As Long
     Color As Long
     Blocks As Collection
 End Type
@@ -63,6 +74,13 @@ Public Property Get Y() As Long
 End Property
 Public Property Let Y(ByVal Y As Long)
     Let This.Y = Y
+End Property
+'-----------------------------------------------------------------------------80
+Public Property Get Stance() As Long
+    Let Stance = This.Stance
+End Property
+Public Property Let Stance(ByVal Stance As Long)
+    Let This.Stance = (4 + Stance) Mod 4 ' Correction to VBA's modulo operation
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Get Color() As Long
@@ -101,6 +119,7 @@ Public Function Copy() As Tetromino
 With New Tetromino
     Let .X = This.X
     Let .Y = This.Y
+    Let .Stance = This.Stance
     Let .Color = This.Color
     
     Dim B As Block
@@ -125,24 +144,29 @@ Public Sub SetBlocksParent(ByRef Parent As Tetromino)
     Next B
 End Sub
 '-----------------------------------------------------------------------------80
-Public Sub Move(ByVal XAxis As Long, ByVal YAxis As Long)
+Public Sub Move(ByVal X As Long, ByVal Y As Long)
 With This
-    Let .X = XAxis + .X
-    Let .Y = YAxis + .Y
+    Let .X = X + .X
+    Let .Y = Y + .Y
 End With
 End Sub
 '-----------------------------------------------------------------------------80
-Public Sub Rotate(Optional ByVal Sign As Long = -1)
+Public Sub Rotate(Optional ByVal Sign As Long = -1) ' CCW: Sign = 1, CW: Sign = -1
+With This
     Dim B As Block
-    For Each B In This.Blocks
+    For Each B In .Blocks
         Call B.Rotate(Sign)
     Next B
+    
+    Let Stance = Sign + .Stance
+    Debug.Print .Stance
+End With
 End Sub
 '-----------------------------------------------------------------------------80
-Public Sub Reflect(Optional ByVal XAxis As Boolean = True, Optional ByVal YAxis As Boolean)
+Public Sub Reflect(Optional ByVal X As Boolean = True, Optional ByVal Y As Boolean)
     Dim B As Block
     For Each B In This.Blocks
-        Call B.Reflect(XAxis, YAxis)
+        Call B.Reflect(X, Y)
     Next B
 End Sub
 '=============================================================================80
@@ -150,7 +174,7 @@ End Sub
 '=============================================================================80
 Private Function GetTetrominoBlocks(ByVal Shape As TetrominoShape) As Collection
     Dim Coll As Collection: Set Coll = New Collection
-    
+    ' The coordinates are with respect to their rotation center
     Select Case Shape
         Case TetrominoShape.I: Call Coll.Add(Block.GetBlock(0, -1, True))
                                Call Coll.Add(Block.GetBlock(0, 0, True))

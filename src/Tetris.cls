@@ -37,6 +37,7 @@ Private Type Variable
 ' Set Up
     ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
     GameState As Long
+    HideBanner As Boolean
     Worksheet As Worksheet
     IsShowcase As Boolean
     Height As Long
@@ -62,6 +63,8 @@ Private Type Variable
     TestPiece As Tetromino
     ' Level
     Level As Long
+    LinesCleared As Long
+    LinesToLevelUp As Long
     Score As Long
     ' Time
     PieceStayTime As Long
@@ -120,15 +123,50 @@ With This
     
     Dim LevelCap As Long: Let LevelCap = IIf(.Level >= 15, 15, .Level)
     Let .PieceStayTime = 1000 * (0.8 - 0.007 * (LevelCap - 1)) ^ (LevelCap - 1)
-    
-    Let .Worksheet.Range("E15").Resize(, 3).Value2 = _
-                        Array(.Level \ 100, (.Level \ 10) Mod 10, .Level Mod 10)
+    Dim LinesToLevelUpPrev As Long: Let LinesToLevelUpPrev = IIf(.Level > 1, .LinesToLevelUp, 0)
+    Let LinesToLevelUp = 10 * LevelCap
+    Let LinesCleared = .LinesCleared - LinesToLevelUpPrev
+    Let .Worksheet.Range("E15").Resize(, 3).Value2 = Array(.Level \ 100, _
+                                                           .Level \ 10 Mod 10, _
+                                                           .Level Mod 10)
+End With
+End Property
+'-----------------------------------------------------------------------------80
+Private Property Let LinesCleared(ByVal Lines As Long)
+With This
+    Let .LinesCleared = Lines
+    Let .Worksheet.Range("B18").Resize(, 3).Value2 = Array(.LinesCleared \ 100, _
+                                                           .LinesCleared \ 10 Mod 10, _
+                                                           .LinesCleared Mod 10)
+    If .LinesCleared >= .LinesToLevelUp Then Let Level = 1 + .Level
+End With
+End Property
+'-----------------------------------------------------------------------------80
+Private Property Let LinesToLevelUp(ByVal Lines As Long)
+With This
+    Let .LinesToLevelUp = Lines
+    Let .Worksheet.Range("F18").Resize(, 3).Value2 = Array(.LinesToLevelUp \ 100, _
+                                                           .LinesToLevelUp \ 10 Mod 10, _
+                                                           .LinesToLevelUp Mod 10)
+End With
+End Property
+'-----------------------------------------------------------------------------80
+Private Property Let Score(ByVal Score As Long)
+With This
+    Let .Score = Score
+    Let .Worksheet.Range("B21").Resize(, 7).Value2 = Array(.Score \ 1000000, _
+                                                           .Score \ 100000 Mod 10, _
+                                                           .Score \ 10000 Mod 10, _
+                                                           .Score \ 1000 Mod 10, _
+                                                           .Score \ 100 Mod 10, _
+                                                           .Score \ 10 Mod 10, _
+                                                           .Score Mod 10)
 End With
 End Property
 '-----------------------------------------------------------------------------80
 Private Property Let Message(ByVal str As String)
 With This
-    Let .Worksheet.Range("B21").Value2 = str
+    Let .Worksheet.Range("B24").Value2 = str
 End With
 End Property
 '=============================================================================80
@@ -195,6 +233,7 @@ With This
         Let .Range("A32:AA32").Interior.ColorIndex = 1
         ' Hide the top two rows according to guideline
         Let .Range("8:9").EntireRow.Hidden = True
+        If This.HideBanner Then Let .Range("2:7").EntireRow.Hidden = True
         Call .Protect(, True, True, True, , True)
     End With
     
@@ -225,6 +264,7 @@ With This
     ' Some settings
     Let Level = 1
     Let GameState = 1
+    Let Score = 0
     Let .FirstNonEmptyRow = .Height
     Call SpawnIncoming(True, True)
     Call GameLoop
@@ -237,8 +277,6 @@ With This
     Dim LastMoveDownTime: Let LastMoveDownTime = TimerInMilliseconds()
     ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
     Do While .GameState >= 0
-        DoEvents
-        
         If .GameState > 0 Then
             Let Time = TimerInMilliseconds()
             If Time - LastMoveDownTime >= .PieceStayTime Then
@@ -322,13 +360,13 @@ With This
                         If .LastPressedKey <> vbKeyDown Then
                             Let LastKeyPressedTime = TimerInMilliseconds()
                             Let .LastPressedKey = vbKeyDown
-                            Call MoveDown(True, True)
+                            Call SoftDown
                         Else
                             Let Time = TimerInMilliseconds()
                             If Time - LastKeyPressedTime >= RepeatDelay Then
                                 If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
                                     Let LastRepeatTime = Time
-                                    Call MoveDown(True, True)
+                                    Call SoftDown
                                 End If
                             End If
                         End If
@@ -340,6 +378,8 @@ With This
             If GetAsyncKeyState(vbKeyR) And &H8000 Then _
                 Let GameState = 2
         End If
+        
+        DoEvents
     Loop
     
     Call Terminate
@@ -490,7 +530,9 @@ With This
         Next X
         
         Let .FirstNonEmptyRow = Lines.Count + .FirstNonEmptyRow
-        Let Message = Lines.Count & " line" & IIf(Lines.Count = 1, vbNullString, "s") & " cleared"
+        Let LinesCleared = Lines.Count + .LinesCleared
+        Let Score = 100 * Choose(Lines.Count, 1, 3, 5, 8) * .Level + .Score
+        Let Message = Choose(Lines.Count, "Single", "Double", "Triple", "Tetris!")
     End If
 End With
 End Sub
@@ -600,19 +642,26 @@ With This
 End With
 End Function
 '-----------------------------------------------------------------------------80
-Private Sub HardDrop()
+Private Sub SoftDown()
+    If MoveDown(True, True) Then Let Score = 1 + This.Score
+End Sub
+'-----------------------------------------------------------------------------80
+Private Function HardDrop() As Long ' Return number of cell dropped
 With This
+    Dim X As Long
     Set .TestPiece = .FallingPiece.Copy
     
     Do
+        Let X = 1 + X
         Call .TestPiece.Move(1, 0)
     Loop While Not IsTestPieceOverlapped()
     
     Call .TestPiece.Move(-1, 0)
     Call AcceptTestPiece(True)
     Call Ground
+    Let Score = 2 * (X - 1) + .Score
 End With
-End Sub
+End Function
 '-----------------------------------------------------------------------------80
 Private Sub Ground()
 With This
@@ -769,3 +818,40 @@ With Excel.Application
                        IIf(IsMissing(Calc), xlCalculationAutomatic, Calc))
 End With
 End Sub
+'=============================================================================80
+' SRS Kick Table
+'=============================================================================80
+' Stance of piece if rotate CW (or CCW) N times
+' | N   | 0 | 1 | 2 | 3 |
+' |-----|---|---|---|---|
+' | CW  | 0 | 1 | 2 | 3 |
+' | CCW | 0 | 3 | 2 | 1 |
+
+' If basic rotation fails, from the rotated stance, test by moving piece
+' Table for shape I
+' |From| To |  Test1  |  Test2  |  Test3  |  Test4  |
+' |----|----|---------|---------|---------|---------|
+' |  0 |  1 | ( 1, 0) | (-2, 0) | ( 1, 2) | (-2,-1) |
+' |  1 |  2 | ( 2, 0) | (-1, 0) | ( 2,-1) | (-1, 2) |
+' |  2 |  3 |     Negetive of transition 0 -> 1     |
+' |  3 |  0 |     Negetive of transition 1 -> 2     |
+' |  0 |  3 |     Negetive of transition 3 -> 0     |
+' |  3 |  2 |     Negetive of transition 2 -> 3     |
+' |  2 |  1 |     Negetive of transition 1 -> 2     |
+' |  1 |  0 |     Negetive of transition 0 -> 1     |
+' (0 -> 3) = (1 -> 2)
+' (3 -> 2) = (0 -> 1)
+' (2 -> 1) = (3 -> 0) = - (1 -> 2)
+' (1 -> 0) = (2 -> 3) = - (0 -> 1)
+
+' Table for other shapes excluding O
+' |From| To |  Test1  |  Test2  |  Test3  |  Test4  |
+' |----|----|---------|---------|---------|---------|
+' |  0 |  1 | (-1, 0) | (-1, 1) | ( 0,-2) | (-1,-2) |
+' |  1 |  2 | ( 1, 0) | ( 1,-1) | ( 0, 2) | ( 1, 2) |
+' |  2 |  3 | ( 1, 0) | ( 1, 1) | ( 0,-2) | ( 1,-2) |
+' |  3 |  0 | (-1, 0) | (-1,-1) | ( 0, 2) | (-1, 2) |
+' |  0 |  3 |     Negetive of transition 3 -> 0     |
+' |  3 |  2 |     Negetive of transition 2 -> 3     |
+' |  2 |  1 |     Negetive of transition 1 -> 2     |
+' |  1 |  0 |     Negetive of transition 0 -> 1     |
