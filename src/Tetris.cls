@@ -442,7 +442,9 @@ Public Sub DrawAll()
 With This
     With .Board
         Let .Borders(XlBordersIndex.xlInsideHorizontal).Weight = XlBorderWeight.xlMedium
+        Let .Borders(XlBordersIndex.xlInsideHorizontal).Color = RGB(31, 31, 31)
         Let .Borders(XlBordersIndex.xlInsideVertical).Weight = XlBorderWeight.xlMedium
+        Let .Borders(XlBordersIndex.xlInsideVertical).Color = RGB(31, 31, 31)
         Call .BorderAround(, XlBorderWeight.xlMedium)
     End With
     

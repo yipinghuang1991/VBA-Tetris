@@ -159,7 +159,6 @@ With This
     Next B
     
     Let Stance = Sign + .Stance
-    Debug.Print .Stance
 End With
 End Sub
 '-----------------------------------------------------------------------------80
