@@ -24,7 +24,6 @@ Feedbacks are welcome!
 10. Press ESC to end game
 
 # What's Working
-* Vanilla Level 1 Tetris game (1000 millisecond gravity)
 * Hold piece
 * Hard drop
 * Pause/Resume
@@ -33,7 +32,6 @@ Feedbacks are welcome!
 * 35 millisecond repeat rate
 
 # To Do
-* Implement score and level
 * Add setting panel
 * Add custom keybinding
 * Add kick
