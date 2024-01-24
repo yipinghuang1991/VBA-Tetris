@@ -642,15 +642,30 @@ End Sub
 ' | CCW | 0 | 1 | 2 | 3 |
 ' | CW  | 0 | 3 | 2 | 1 |
 ' If basic rotation fails, from the rotated stance, test by moving piece
-'
+Private Function Rotate(ByVal Sign As Long, _
+                        Optional ByVal AcceptOnSuccess As Boolean, _
+                        Optional ByVal DrawOnSuccess As Boolean) As Boolean
+With This
+    Set .TestPiece = .FallingPiece.Copy
+    Call .TestPiece.Rotate(Sign) ' CCW: Sign = 1, CW: Sign = -1
+    If IsTestPieceValid() Then
+        Let Rotate = True
+        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+    ElseIf Kick() Then
+        Let Rotate = True
+        Let Message = "Wall kick."
+        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+    End If
+End With
+End Function
 ' SRS Kick Table for shape T, J, L, S, Z:
 ' ---------------------------------------------------
 ' |From| To |  Test1  |  Test2  |  Test3  |  Test4  | Transition
 ' |----|----|---------|---------|---------|---------|
-' |  0 |  1 | ( 0,-1) | ( 1,-1) | (-2, 0) | (-2,-1) |   1
-' |  1 |  2 | ( 0, 1) | (-1, 1) | ( 2, 0) | ( 2, 1) |  12
-' |  2 |  3 | ( 0, 1) | ( 1, 1) | (-2, 0) | (-2, 1) |  23
-' |  3 |  0 | ( 0,-1) | (-1,-1) | ( 2, 0) | ( 2,-1) |  30
+' |  0 |  1 | ( 0, 1) | (-1, 1) | ( 2, 0) | ( 2, 1) |   1
+' |  1 |  2 | ( 0,-1) | ( 1,-1) | (-2, 0) | (-2,-1) |  12
+' |  2 |  3 | ( 0,-1) | (-1,-1) | ( 2, 0) | ( 2,-1) |  23
+' |  3 |  0 | ( 0, 1) | ( 1, 1) | (-2, 0) | (-2, 1) |  30
 ' |  0 |  3 |     Negetive of transition 3 -> 0     |   3
 ' |  3 |  2 |     Negetive of transition 2 -> 3     |  32
 ' |  2 |  1 |     Negetive of transition 1 -> 2     |  21
@@ -661,8 +676,8 @@ End Sub
 ' ---------------------------------------------------
 ' |From| To |  Test1  |  Test2  |  Test3  |  Test4  | Transition
 ' |----|----|---------|---------|---------|---------|
-' |  0 |  1 | ( 0, 1) | ( 0,-2) | ( 2, 1) | (-1,-2) |   1
-' |  1 |  2 | ( 0, 2) | ( 0,-1) | (-1, 2) | ( 2,-1) |  12
+' |  0 |  1 | ( 0,-1) | ( 0, 2) | (-2,-1) | ( 1, 2) |   1
+' |  1 |  2 | ( 0,-2) | ( 0, 1) | ( 1,-2) | (-2, 1) |  12
 ' |  2 |  3 |     Negetive of transition 0 -> 1     |  23
 ' |  3 |  0 |     Negetive of transition 1 -> 2     |  30
 ' |  0 |  3 |     Negetive of transition 3 -> 0     |   3
@@ -674,23 +689,6 @@ End Sub
 ' (3 -> 2) = (0 -> 1)
 ' (2 -> 1) = (3 -> 0) = - (1 -> 2)
 ' (1 -> 0) = (2 -> 3) = - (0 -> 1)
-'-----------------------------------------------------------------------------80
-Private Function Rotate(ByVal Sign As Long, _
-                        Optional ByVal AcceptOnSuccess As Boolean, _
-                        Optional ByVal DrawOnSuccess As Boolean) As Boolean
-With This
-    Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Rotate(Sign) ' CCW: Sign = 1, CW: Sign = -1
-    If IsTestPieceValid() Then
-        Let Rotate = True
-        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
-'    ElseIf Kick() Then
-'        Let Rotate = True
-'        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
-    End If
-End With
-End Function
-'-----------------------------------------------------------------------------80
 Private Function Kick() As Boolean
 With This
     Dim Transition As Long: Let Transition = 10 * .FallingPiece.Stance + .TestPiece.Stance
@@ -698,8 +696,8 @@ With This
     
     If .FallingShape = TetrominoShape.IShape Then
         Select Case Transition
-            Case 1, 10, 23, 32: Let Tests = Array(Array(0, 1), Array(0, -2), Array(2, 1), Array(-1, -2))
-            Case 3, 12, 21, 30: Let Tests = Array(Array(0, 2), Array(0, -1), Array(-1, 2), Array(2, -1))
+            Case 1, 10, 23, 32: Let Tests = Array(Array(0, -1), Array(0, 2), Array(-2, -1), Array(1, 2))
+            Case 3, 12, 21, 30: Let Tests = Array(Array(0, -2), Array(0, 1), Array(1, -2), Array(-2, 1))
         End Select
         
         Select Case Transition
@@ -708,10 +706,10 @@ With This
         End Select
     Else
         Select Case Transition
-            Case 1, 10: Let Tests = Array(Array(0, -1), Array(1, -1), Array(-2, 0), Array(-2, -1))
-            Case 12, 21: Let Tests = Array(Array(0, 1), Array(-1, 1), Array(2, 0), Array(2, 1))
-            Case 23, 32: Let Tests = Array(Array(0, 1), Array(1, 1), Array(-2, 0), Array(-2, 1))
-            Case 3, 30: Let Tests = Array(Array(0, -1), Array(-1, -1), Array(2, 0), Array(2, -1))
+            Case 1, 10: Let Tests = Array(Array(0, 1), Array(-1, 1), Array(2, 0), Array(2, 1))
+            Case 12, 21: Let Tests = Array(Array(0, -1), Array(1, -1), Array(-2, 0), Array(-2, -1))
+            Case 23, 32: Let Tests = Array(Array(0, -1), Array(-1, -1), Array(2, 0), Array(2, -1))
+            Case 3, 30: Let Tests = Array(Array(0, 1), Array(1, 1), Array(-2, 0), Array(-2, 1))
         End Select
         
         Select Case Transition
@@ -722,9 +720,9 @@ With This
     
     Dim test As Variant
     For Each test In Tests
+        'Debug.Print "X: " & .TestPiece.X & ", Y: " & .TestPiece.Y & " (Center)"
         Call .TestPiece.Translate(Sign * test(0), Sign * test(1))
-        Debug.Print "Center: X: " & .TestPiece.X & ", Y: " & .TestPiece.Y
-        Debug.Print "Transition: " & Transition & ", X: " & Sign * test(0) & ", Y: " & Sign * test(1)
+        'Debug.Print "X: " & Sign * test(0) & ", Y: " & Sign * test(1) & " (Transition: " & Transition & ")"
         
         If IsTestPieceValid() Then
             Let Kick = True
