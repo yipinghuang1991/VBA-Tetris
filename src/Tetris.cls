@@ -37,7 +37,6 @@ Private Type Variable
 ' Set Up
     ' -3: Error, -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
     GameState As Long
-    HideBanner As Boolean
     Worksheet As Worksheet
     IsShowcase As Boolean
     Height As Long
@@ -229,8 +228,7 @@ With This
         Let .Range("AC1:AC32").Interior.ColorIndex = 1
         Let .Range("A32:AB32").Interior.ColorIndex = 1
         ' Hide the top two rows according to guideline
-        'Let .Range("8:9").EntireRow.Hidden = True
-        If This.HideBanner Then Let .Range("2:7").EntireRow.Hidden = True
+        Let .Range("8:9").EntireRow.Hidden = True
         Call .Protect(, True, True, True, , True)
     End With
     
