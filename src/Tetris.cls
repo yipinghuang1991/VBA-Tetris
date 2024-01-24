@@ -103,11 +103,11 @@ Public Property Let IsShowcase(ByVal IsShowcase As Boolean)
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Let Height(ByVal Height As Long)
-    Let This.Height = Height + IIf(This.IsShowcase, 0, 3)
+    Let This.Height = Height + IIf(This.IsShowcase, 0, 2)
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Let Width(ByVal Width As Long)
-    Let This.Width = Width + IIf(This.IsShowcase, 0, 2)
+    Let This.Width = Width
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Let Cell_1_1_Address(ByVal Cell_1_1_Address As String)
@@ -229,13 +229,12 @@ With This
         Let .Range("AC1:AC32").Interior.ColorIndex = 1
         Let .Range("A32:AB32").Interior.ColorIndex = 1
         ' Hide the top two rows according to guideline
-        Let .Range("8:9").EntireRow.Hidden = True
+        'Let .Range("8:9").EntireRow.Hidden = True
         If This.HideBanner Then Let .Range("2:7").EntireRow.Hidden = True
         Call .Protect(, True, True, True, , True)
     End With
     
     If Not .IsShowcase Then
-        Call SetBoundaryBlocks
         Set .IncomingShapes = New Collection
         Call AddBag
         Set .Held = Tetris.GetTetris(.Worksheet, "U11", 2, 4, True)
@@ -398,12 +397,12 @@ With This
     Dim X As Long, Y As Long
     
     ReDim .Matrix(1 To .Height, 1 To .Width) As Cell
-    ReDim .Rows(1 To .Height - 1) As Variant
+    ReDim .Rows(1 To .Height) As Variant
     
     Dim Arr() As Cell
     
-    For X = 1 To .Height - 1
-        ReDim Arr(2 To .Width - 1) As Cell
+    For X = 1 To .Height
+        ReDim Arr(1 To .Width) As Cell
         Let .Rows(X) = Arr
     Next X
     
@@ -415,33 +414,11 @@ With This
         Next Y
     Next X
     
-    For X = 1 To .Height - 1
-        For Y = 2 To .Width - 1
+    For X = 1 To .Height
+        For Y = 1 To .Width
             Set .Rows(X)(Y) = .Matrix(X, Y)
         Next Y
     Next X
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub SetBoundaryBlocks()
-With This
-    Set .BoundaryBlocks = New Collection
-    
-    Dim X As Long
-    For X = 1 To .Height
-        Call .BoundaryBlocks.Add(Block.GetBlock(X, 1, , , RGB(127, 127, 127)))
-        Call .BoundaryBlocks.Add(Block.GetBlock(X, .Width, , , RGB(127, 127, 127)))
-    Next X
-    
-    Dim Y As Long
-    For Y = 2 To .Width - 1
-        Call .BoundaryBlocks.Add(Block.GetBlock(.Height, Y, , , RGB(127, 127, 127)))
-    Next Y
-    
-    Dim B As Block
-    For Each B In .BoundaryBlocks
-        Set .Matrix(B.X, B.Y).Block = B
-    Next B
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -521,7 +498,10 @@ Private Function IsTestPieceOverlapped() As Boolean
 With This
     Dim B As Block
     For Each B In .TestPiece.Blocks
-        If .Matrix(B.X, B.Y).State = 0 Then
+        If B.X > .Height Or B.Y < 1 Or B.Y > .Width Then
+            Let IsTestPieceOverlapped = True
+            Exit For
+        ElseIf .Matrix(B.X, B.Y).State = 0 Then
             Let IsTestPieceOverlapped = True
             Exit For
         End If
@@ -539,7 +519,7 @@ End Sub
 Private Function SpawnIncoming(Optional ByVal AcceptOnSuccess As Boolean, _
                                Optional ByVal DrawOnSuccess As Boolean) As Boolean
 With This
-    Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = TetrominoShape.OShape, 1, 2), IIf(.IsShowcase, 2, 6))
+    Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = TetrominoShape.OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     
     If Not IsTestPieceOverlapped() Then
         Let SpawnIncoming = True
@@ -566,7 +546,7 @@ Public Sub Spawn(Optional ByVal Shape As TetrominoShape)
 With This
     If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call UnlinkPiece
     If Shape <> 0 Then Let .FallingShape = Shape
-    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = TetrominoShape.OShape, 1, 2), IIf(.IsShowcase, 2, 6))
+    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = TetrominoShape.OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     Call LinkPiece
     Call DrawChanged
 End With
@@ -763,7 +743,7 @@ With This
     Dim X As Long, IsLine As Boolean, C As Variant, Xv As Variant
     
     Dim Lines As Collection: Set Lines = New Collection
-    Dim RowMoveDownStep() As Long: ReDim RowMoveDownStep(1 To .Height - 1) As Long
+    Dim RowMoveDownStep() As Long: ReDim RowMoveDownStep(1 To .Height) As Long
     'Dim MoveRow() As Long: ReDim MoveRow(.FirstNonEmptyRow To .Height - 1) As Long
     
 '    For X = .FirstNonEmptyRow To .Height - 1
@@ -771,7 +751,7 @@ With This
 '    Next X
     
     ' Determine row number of lines
-    For X = .Height - 1 To .FirstNonEmptyRow Step -1
+    For X = .Height To .FirstNonEmptyRow Step -1
         Let IsLine = True
         
         For Each C In .Rows(X)

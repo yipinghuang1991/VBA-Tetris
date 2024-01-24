@@ -14,7 +14,7 @@ Private Game As Tetris
 '=============================================================================80
 Public Sub StartButton_Click()
     If Game Is Nothing Then
-        Set Game = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "H8")
+        Set Game = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "I8")
         Call Game.Start
         Set Game = Nothing
     Else
