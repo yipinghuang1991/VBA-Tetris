@@ -492,15 +492,17 @@ With This
 End With
 End Sub
 '-----------------------------------------------------------------------------80
-Private Function IsTestPieceOverlapped() As Boolean
+Private Function IsTestPieceValid() As Boolean
 With This
+    Let IsTestPieceValid = True
+    
     Dim B As Block
     For Each B In .TestPiece.Blocks
         If B.X > .Height Or B.Y < 1 Or B.Y > .Width Then
-            Let IsTestPieceOverlapped = True
+            Let IsTestPieceValid = False
             Exit For
         ElseIf .Matrix(B.X, B.Y).State = 0 Then
-            Let IsTestPieceOverlapped = True
+            Let IsTestPieceValid = False
             Exit For
         End If
     Next B
@@ -519,7 +521,7 @@ Private Function SpawnIncoming(Optional ByVal AcceptOnSuccess As Boolean, _
 With This
     Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = TetrominoShape.OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     
-    If Not IsTestPieceOverlapped() Then
+    If IsTestPieceValid() Then
         Let SpawnIncoming = True
         If AcceptOnSuccess Then
             Let .FallingShape = .IncomingShapes(1)
@@ -585,7 +587,7 @@ Private Function Translate(ByVal X As Long, ByVal Y As Long, _
 With This
     Set .TestPiece = .FallingPiece.Copy
     Call .TestPiece.Translate(X, Y)
-    If Not IsTestPieceOverlapped() Then
+    If IsTestPieceValid() Then
         Let Translate = True
         If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
     ElseIf X = 1 Then
@@ -606,7 +608,7 @@ With This
     Do
         Let X = 1 + X
         Call .TestPiece.Translate(1, 0)
-    Loop While Not IsTestPieceOverlapped()
+    Loop While IsTestPieceValid()
     
     Call .TestPiece.Translate(-1, 0)
     Call AcceptTestPiece(True)
@@ -679,7 +681,7 @@ Private Function Rotate(ByVal Sign As Long, _
 With This
     Set .TestPiece = .FallingPiece.Copy
     Call .TestPiece.Rotate(Sign) ' CCW: Sign = 1, CW: Sign = -1
-    If Not IsTestPieceOverlapped() Then
+    If IsTestPieceValid() Then
         Let Rotate = True
         If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
 '    ElseIf Kick() Then
@@ -724,7 +726,7 @@ With This
         Debug.Print "Center: X: " & .TestPiece.X & ", Y: " & .TestPiece.Y
         Debug.Print "Transition: " & Transition & ", X: " & Sign * test(0) & ", Y: " & Sign * test(1)
         
-        If Not IsTestPieceOverlapped() Then
+        If IsTestPieceValid() Then
             Let Kick = True
             Exit For
         End If
