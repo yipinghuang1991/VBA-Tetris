@@ -8,18 +8,17 @@ Option Explicit
 '=============================================================================80
 ' Variable
 '=============================================================================80
-Private Tet As Tetris
+Private Game As Tetris
 '=============================================================================80
-' Methods
+' Method
 '=============================================================================80
-Public Sub ButtonClick()
-    If Tet Is Nothing Then
-        Set Tet = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "J8")
-        Call Tet.Start
+Public Sub StartButton_Click()
+    If Game Is Nothing Then
+        Set Game = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "H8")
+        Call Game.Start
+        Set Game = Nothing
+    Else
+        Let Game.GameState = -2
+        ' Set Game = Nothing ' Why don't I need this line?
     End If
-End Sub
-'-----------------------------------------------------------------------------80
-Public Sub Terminate()
-    Set Tet = Nothing
-    End
 End Sub
