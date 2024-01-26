@@ -210,11 +210,6 @@ End Function
 '=============================================================================80
 Public Sub Start()
 With This
-    With ActiveWindow
-        .DisplayHeadings = False
-        .DisplayGridlines = False
-    End With
-    
     With .Worksheet
         Call .Unprotect
         Call .Range("A1").Select
@@ -883,18 +878,18 @@ With Excel.Application
     Let .Calculation = IIf(Toggle, xlCalculationManual, _
                        IIf(IsMissing(Calc), xlCalculationAutomatic, Calc))
     Let .DisplayAlerts = Not Toggle
-    Let .DisplayFormulaBar = Not Toggle
-    Let .DisplayScrollBars = Not Toggle
-    Let .DisplayStatusBar = Not Toggle
+    'Let .DisplayFormulaBar = Not Toggle
+    'Let .DisplayScrollBars = Not Toggle
+    'Let .DisplayStatusBar = Not Toggle
     Let .EnableAnimations = Not Toggle
     Let .EnableEvents = Not Toggle
     Let .PrintCommunication = Not Toggle
     'Let .ScreenUpdating = Not toggle
-    Call .ExecuteExcel4Macro("Show.Toolbar(""Ribbon""," & CStr(Not Toggle) & ")")
+    'Call .ExecuteExcel4Macro("Show.Toolbar(""Ribbon""," & CStr(Not Toggle) & ")")
     
     With .ActiveWindow
         Let .DisplayGridlines = Not Toggle
-        Let .DisplayHeadings = Not Toggle
+        'Let .DisplayHeadings = Not Toggle
         'Let .DisplayWorkbookTabs = Not Toggle
     End With
 End With
