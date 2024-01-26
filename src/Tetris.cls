@@ -10,6 +10,7 @@ Attribute VB_Exposed = False
 Option Explicit
 '=============================================================================80
 ' Tetris
+'
 ' Author: Yi-Ping Huang
 ' https://github.com/yipinghuang1991/VBA-Tetris
 '=============================================================================80
@@ -441,21 +442,21 @@ End Sub
 '=============================================================================80
 ' Method: Tetromino
 '=============================================================================80
-Private Sub LinkPiece()
+Private Sub LinkPiece(ByRef Piece As Tetromino)
 With This
     Dim B As Variant
-    For Each B In .FallingPiece.Blocks
+    For Each B In Piece.Blocks
         Set .Matrix(B.x, B.y).Block = B
         Call AddChangedCell(.Matrix(B.x, B.y))
     Next B
 End With
 End Sub
 '-----------------------------------------------------------------------------80
-Private Sub UnlinkPiece()
+Private Sub UnlinkPiece(ByRef Piece As Tetromino)
 With This
-    If Not .FallingPiece Is Nothing Then
+    If Not Piece Is Nothing Then
         Dim B As Variant
-        For Each B In .FallingPiece.Blocks
+        For Each B In Piece.Blocks
             Set .Matrix(B.x, B.y).Block = Nothing
             Call AddChangedCell(.Matrix(B.x, B.y))
         Next B
@@ -465,24 +466,24 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub AcceptTestPiece(Optional ByVal Draw As Boolean)
 With This
-    Call UnlinkPiece
+    Call UnlinkPiece(.FallingPiece)
     Set .FallingPiece = .TestPiece
-    Call LinkPiece
+    Call LinkPiece(.FallingPiece)
     If Draw Then Call DrawChanged
 End With
 End Sub
 '-----------------------------------------------------------------------------80
-Private Function IsTestPieceValid() As Boolean
+Private Function IsPieceValid(ByRef Piece As Tetromino) As Boolean
 With This
-    Let IsTestPieceValid = True
+    Let IsPieceValid = True
     
     Dim B As Variant
-    For Each B In .TestPiece.Blocks
+    For Each B In Piece.Blocks
         If B.x > .Height Or B.y < 1 Or B.y > .Width Then
-            Let IsTestPieceValid = False
+            Let IsPieceValid = False
             Exit For
         ElseIf .Matrix(B.x, B.y).State = 0 Then
-            Let IsTestPieceValid = False
+            Let IsPieceValid = False
             Exit For
         End If
     Next B
@@ -501,7 +502,7 @@ Private Function SpawnIncoming(Optional ByVal AcceptOnSuccess As Boolean, _
 With This
     Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     
-    If IsTestPieceValid() Then
+    If IsPieceValid(.TestPiece) Then
         Let SpawnIncoming = True
         If AcceptOnSuccess Then
             Let .FallingShape = .IncomingShapes(1)
@@ -524,10 +525,10 @@ End Function
 '-----------------------------------------------------------------------------80
 Public Sub Spawn(Optional ByVal Shape As TetrominoShape)
 With This
-    If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call UnlinkPiece
+    If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call UnlinkPiece(.FallingPiece)
     If Shape <> 0 Then Let .FallingShape = Shape
     Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
-    Call LinkPiece
+    Call LinkPiece(.FallingPiece)
     Call DrawChanged
 End With
 End Sub
@@ -539,7 +540,7 @@ With This
     Else
         Let .IsHeld = True
         
-        Call UnlinkPiece
+        Call UnlinkPiece(.FallingPiece)
         
         Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
         Let .HeldShape = .FallingShape
@@ -567,7 +568,7 @@ Private Function Translate(ByVal x As Long, ByVal y As Long, _
 With This
     Set .TestPiece = .FallingPiece.Copy
     Call .TestPiece.Translate(x, y)
-    If IsTestPieceValid() Then
+    If IsPieceValid(.TestPiece) Then
         Let Translate = True
         If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
     ElseIf x = 1 Then
@@ -588,12 +589,31 @@ With This
     Do
         Let x = 1 + x
         Call .TestPiece.Translate(1, 0)
-    Loop While IsTestPieceValid()
+    Loop While IsPieceValid(.TestPiece)
     
     Call .TestPiece.Translate(-1, 0)
     Call AcceptTestPiece(True)
     Call Ground
     Let Score = 2 * (x - 1) + .Score
+End With
+End Sub
+'-----------------------------------------------------------------------------80
+Private Sub UpdateGhostPiece()
+With This
+    Dim x As Long
+    
+    Call UnlinkPiece(.GhostPiece)
+    
+    Set .GhostPiece = .FallingPiece.Copy
+
+    Do
+        Let x = 1 + x
+        Call .GhostPiece.Translate(1, 0)
+    Loop While IsPieceValid(.GhostPiece)
+
+    Call .GhostPiece.Translate(-1, 0)
+    
+    Call LinkPiece(.GhostPiece)
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -622,7 +642,7 @@ Private Function Rotate(ByVal Sign As Long, _
 With This
     Set .TestPiece = .FallingPiece.Copy
     Call .TestPiece.Rotate(Sign) ' CCW: Sign = 1, CW: Sign = -1
-    If IsTestPieceValid() Then
+    If IsPieceValid(.TestPiece) Then
         Let Rotate = True
         If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
 '    ElseIf Kick() Then
@@ -634,7 +654,7 @@ With This
         For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, .TestPiece.Stance)
             Call .TestPiece.Translate(Test(0), Test(1))
             
-            If IsTestPieceValid() Then
+            If IsPieceValid(.TestPiece) Then
                 Let Rotate = True
                 Let Message = "Wall kick"
                 If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
@@ -651,7 +671,7 @@ End Function
 '    For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, .TestPiece.Stance)
 '        Call .TestPiece.Translate(Test(0), Test(1))
 '
-'        If IsTestPieceValid() Then
+'        If IsPieceValid(.TestPiece) Then
 '            Let Kick = True
 '            Exit For
 '        End If
