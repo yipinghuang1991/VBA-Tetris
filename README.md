@@ -6,7 +6,7 @@ Feedbacks are welcome!
 [Link to Youtube](https://www.youtube.com/watch?v=S3Vg4gpgSmo)
 
 # Screenshot
-![Screenshot](https://raw.githubusercontent.com/yipinghuang1991/VBA-Tetris/main/src/screenshot.png)
+![Screenshot](https://raw.githubusercontent.com/yipinghuang1991/VBA-Tetris/main/src/screenshot2.jpg)
 
 # Requirement
 * Windows 10 64bit (Not tested on other platform)
