@@ -2,8 +2,8 @@ I am writing a Tetris game using Excel and VBA.
 So that you have something to do if the IT policy in your company prevent you do install games.
 Feedbacks are welcome!
 
-# Video Demo
-[Link to Youtube](https://www.youtube.com/watch?v=S3Vg4gpgSmo)
+# Demo
+![Demo](https://raw.githubusercontent.com/yipinghuang1991/VBA-Tetris/main/src/gif_demo.gif)
 
 # Screenshot
 ![Screenshot](https://raw.githubusercontent.com/yipinghuang1991/VBA-Tetris/main/src/screenshot2.jpg)
