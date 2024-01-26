@@ -39,11 +39,11 @@ End Enum
 ' Variable Container
 '=============================================================================80
 Private Type Variable
-    X As Long
-    Y As Long
+    x As Long
+    y As Long
     Stance As Long
     Color As Long
-    Blocks As Collection
+    Blocks() As Block
 End Type
 '-----------------------------------------------------------------------------80
 Private This As Variable
@@ -51,7 +51,7 @@ Private This As Variable
 ' Event
 '=============================================================================80
 Private Sub Class_Initialize()
-    Set This.Blocks = New Collection
+    ReDim Blocks(1 To 4)
 End Sub
 '=============================================================================80
 ' Read-Only Property
@@ -62,18 +62,18 @@ End Property
 '=============================================================================80
 ' Read-Write Property
 '=============================================================================80
-Public Property Get X() As Long
-    Let X = This.X
+Public Property Get x() As Long
+    Let x = This.x
 End Property
-Public Property Let X(ByVal X As Long)
-    Let This.X = X
+Public Property Let x(ByVal x As Long)
+    Let This.x = x
 End Property
 '-----------------------------------------------------------------------------80
-Public Property Get Y() As Long
-    Let Y = This.Y
+Public Property Get y() As Long
+    Let y = This.y
 End Property
-Public Property Let Y(ByVal Y As Long)
-    Let This.Y = Y
+Public Property Let y(ByVal y As Long)
+    Let This.y = y
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Get Stance() As Long
@@ -90,24 +90,28 @@ Public Property Let Color(ByVal Color As Long)
     Let This.Color = Color
 End Property
 '-----------------------------------------------------------------------------80
-Public Property Get Blocks() As Collection
-    Set Blocks = This.Blocks
+Public Property Get Blocks() As Block()
+    Let Blocks = This.Blocks
 End Property
-Public Property Set Blocks(ByRef Blocks As Collection)
-    Set This.Blocks = Blocks
+Public Property Let Blocks(ByRef Blocks() As Block)
+    Let This.Blocks = Blocks
 End Property
 '=============================================================================80
 ' Constructor
 '=============================================================================80
-Public Function GetTetromino(ByVal Shape As TetrominoShape, ByVal X As Long, ByVal Y As Long) As Tetromino
+Public Function GetTetromino(ByVal Shape As TetrominoShape, ByVal x As Long, ByVal y As Long) As Tetromino
 With New Tetromino
-    Let .X = X
-    Let .Y = Y
+    Let .x = x
+    Let .y = y
     Let .Color = GetTetrominoColor(Shape)
-    Set .Blocks = GetTetrominoBlocks(Shape)
-    Call .SetBlocksParent(.Self)
+    Let .Blocks = GetTetrominoBlocks(Shape)
     
-    If Shape = TetrominoShape.LShape Or Shape = TetrominoShape.ZShape Then
+    Dim B As Variant
+    For Each B In .Blocks
+        Set B.Parent = .Self
+    Next B
+    
+    If Shape = LShape Or Shape = ZShape Then
         Call .Reflect
     End If
     
@@ -117,19 +121,20 @@ End Function
 '-----------------------------------------------------------------------------80
 Public Function Copy() As Tetromino
 With New Tetromino
-    Let .X = This.X
-    Let .Y = This.Y
+    Let .x = This.x
+    Let .y = This.y
     Let .Stance = This.Stance
     Let .Color = This.Color
     
-    Dim B As Block
-    For Each B In This.Blocks
-        Call .Blocks.Add(B.Copy)
-    Next B
+    Dim Blocks() As Block: ReDim Blocks(1 To 4)
     
-    For Each B In .Blocks
-        Set B.Parent = .Self
-    Next B
+    Dim i As Long
+    For i = 1 To 4
+        Set Blocks(i) = This.Blocks(i).Copy
+        Set Blocks(i).Parent = .Self
+    Next i
+    
+    Let .Blocks = Blocks
     
     Set Copy = .Self
 End With
@@ -137,23 +142,16 @@ End Function
 '=============================================================================80
 ' Method
 '=============================================================================80
-Public Sub SetBlocksParent(ByRef Parent As Tetromino)
-    Dim B As Block
-    For Each B In This.Blocks
-        Set B.Parent = Parent
-    Next B
-End Sub
-'-----------------------------------------------------------------------------80
-Public Sub Translate(ByVal X As Long, ByVal Y As Long)
+Public Sub Translate(ByVal x As Long, ByVal y As Long)
 With This
-    Let .X = X + .X
-    Let .Y = Y + .Y
+    Let .x = x + .x
+    Let .y = y + .y
 End With
 End Sub
 '-----------------------------------------------------------------------------80
 Public Sub Rotate(Optional ByVal Sign As Long = -1) ' CCW: Sign = 1, CW: Sign = -1
 With This
-    Dim B As Block
+    Dim B As Variant
     For Each B In .Blocks
         Call B.Rotate(Sign)
     Next B
@@ -162,62 +160,62 @@ With This
 End With
 End Sub
 '-----------------------------------------------------------------------------80
-Public Sub Reflect(Optional ByVal X As Boolean = True, Optional ByVal Y As Boolean)
-    Dim B As Block
+Public Sub Reflect(Optional ByVal x As Boolean = True, Optional ByVal y As Boolean)
+    Dim B As Variant
     For Each B In This.Blocks
-        Call B.Reflect(X, Y)
+        Call B.Reflect(x, y)
     Next B
 End Sub
 '=============================================================================80
 ' Helper Function
 '=============================================================================80
-Private Function GetTetrominoBlocks(ByVal Shape As TetrominoShape) As Collection
-    Dim Coll As Collection: Set Coll = New Collection
+Private Function GetTetrominoBlocks(ByVal Shape As TetrominoShape) As Block()
+    Dim Blocks() As Block: ReDim Blocks(1 To 4)
     ' The coordinates are with respect to their rotation center
     Select Case Shape
-        Case TetrominoShape.IShape: Call Coll.Add(Block.GetBlock(0, -1, True))
-                                    Call Coll.Add(Block.GetBlock(0, 0, True))
-                                    Call Coll.Add(Block.GetBlock(0, 1, True))
-                                    Call Coll.Add(Block.GetBlock(0, 2, True))
-        Case TetrominoShape.OShape: Call Coll.Add(Block.GetBlock(0, 0, True))
-                                    Call Coll.Add(Block.GetBlock(0, 1, True))
-                                    Call Coll.Add(Block.GetBlock(1, 1, True))
-                                    Call Coll.Add(Block.GetBlock(1, 0, True))
-        Case TetrominoShape.TShape: Call Coll.Add(Block.GetBlock(-1, 0))
-                                    Call Coll.Add(Block.GetBlock(0, -1))
-                                    Call Coll.Add(Block.GetBlock(0, 0))
-                                    Call Coll.Add(Block.GetBlock(0, 1))
-        Case TetrominoShape.JShape, TetrominoShape.LShape
-                                    Call Coll.Add(Block.GetBlock(0, 1))
-                                    Call Coll.Add(Block.GetBlock(0, 0))
-                                    Call Coll.Add(Block.GetBlock(0, -1))
-                                    Call Coll.Add(Block.GetBlock(-1, -1))
-'        Case TetrominoShape.LShape: Call Coll.Add(Block.GetBlock(0, -1))
-'                                    Call Coll.Add(Block.GetBlock(0, 0))
-'                                    Call Coll.Add(Block.GetBlock(0, 1))
-'                                    Call Coll.Add(Block.GetBlock(-1, 1))
-        Case TetrominoShape.SShape, TetrominoShape.ZShape
-                                    Call Coll.Add(Block.GetBlock(-1, 1))
-                                    Call Coll.Add(Block.GetBlock(-1, 0))
-                                    Call Coll.Add(Block.GetBlock(0, 0))
-                                    Call Coll.Add(Block.GetBlock(0, -1))
-'        Case TetrominoShape.ZShape: Call Coll.Add(Block.GetBlock(-1, -1))
-'                                    Call Coll.Add(Block.GetBlock(-1, 0))
-'                                    Call Coll.Add(Block.GetBlock(0, 0))
-'                                    Call Coll.Add(Block.GetBlock(0, 1))
+        Case IShape: Set Blocks(1) = Block.GetBlock(0, -1, True)
+                     Set Blocks(2) = Block.GetBlock(0, 0, True)
+                     Set Blocks(3) = Block.GetBlock(0, 1, True)
+                     Set Blocks(4) = Block.GetBlock(0, 2, True)
+        Case OShape: Set Blocks(1) = Block.GetBlock(0, 0, True)
+                     Set Blocks(2) = Block.GetBlock(0, 1, True)
+                     Set Blocks(3) = Block.GetBlock(1, 1, True)
+                     Set Blocks(4) = Block.GetBlock(1, 0, True)
+        Case TShape: Set Blocks(1) = Block.GetBlock(-1, 0)
+                     Set Blocks(2) = Block.GetBlock(0, -1)
+                     Set Blocks(3) = Block.GetBlock(0, 0)
+                     Set Blocks(4) = Block.GetBlock(0, 1)
+        Case JShape, LShape
+                     Set Blocks(1) = Block.GetBlock(0, 1)
+                     Set Blocks(2) = Block.GetBlock(0, 0)
+                     Set Blocks(3) = Block.GetBlock(0, -1)
+                     Set Blocks(4) = Block.GetBlock(-1, -1)
+'        Case LShape: Let Blocks(1) = Block.GetBlock(0, -1)
+'                     Let Blocks(2) = Block.GetBlock(0, 0)
+'                     Let Blocks(3) = Block.GetBlock(0, 1)
+'                     Let Blocks(4) = Block.GetBlock(-1, 1)
+        Case SShape, ZShape
+                     Set Blocks(1) = Block.GetBlock(-1, 1)
+                     Set Blocks(2) = Block.GetBlock(-1, 0)
+                     Set Blocks(3) = Block.GetBlock(0, 0)
+                     Set Blocks(4) = Block.GetBlock(0, -1)
+'        Case ZShape: Let Blocks(1) = Block.GetBlock(-1, -1)
+'                     Let Blocks(2) = Block.GetBlock(-1, 0)
+'                     Let Blocks(3) = Block.GetBlock(0, 0)
+'                     Let Blocks(4) = Block.GetBlock(0, 1)
     End Select
     
-    Set GetTetrominoBlocks = Coll
+    Let GetTetrominoBlocks = Blocks
 End Function
 '-----------------------------------------------------------------------------80
 Private Function GetTetrominoColor(ByVal Shape As TetrominoShape) As Long
 Select Case Shape
-    Case TetrominoShape.IShape: Let GetTetrominoColor = RGB(0, 255, 255)
-    Case TetrominoShape.OShape: Let GetTetrominoColor = RGB(255, 255, 0)
-    Case TetrominoShape.TShape: Let GetTetrominoColor = RGB(128, 0, 128)
-    Case TetrominoShape.JShape: Let GetTetrominoColor = RGB(0, 0, 255)
-    Case TetrominoShape.LShape: Let GetTetrominoColor = RGB(255, 128, 0)
-    Case TetrominoShape.SShape: Let GetTetrominoColor = RGB(0, 255, 0)
-    Case TetrominoShape.ZShape: Let GetTetrominoColor = RGB(255, 0, 0)
+    Case IShape: Let GetTetrominoColor = RGB(0, 255, 255)
+    Case OShape: Let GetTetrominoColor = RGB(255, 255, 0)
+    Case TShape: Let GetTetrominoColor = RGB(128, 0, 128)
+    Case JShape: Let GetTetrominoColor = RGB(0, 0, 255)
+    Case LShape: Let GetTetrominoColor = RGB(255, 128, 0)
+    Case SShape: Let GetTetrominoColor = RGB(0, 255, 0)
+    Case ZShape: Let GetTetrominoColor = RGB(255, 0, 0)
 End Select
 End Function

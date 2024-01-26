@@ -45,7 +45,7 @@ Public Property Get State() As Long
     Let State = This.State
 End Property
 '-----------------------------------------------------------------------------80
-Private Property Get Color() As Long
+Public Property Get Color() As Long
 With This
     Select Case .State
         Case -1:   Let Color = .BackgroundColor

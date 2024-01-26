@@ -44,11 +44,9 @@ Private Type Variable
     Cell_1_1_Address As String
     Board As Range
     Matrix() As Cell
-    Rows() As Variant
     FirstNonEmptyRow As Long
     ' Object
     ChangedCells As Dictionary
-    BoundaryBlocks As Collection
     ' Next
     IncomingShapes As Collection
     Nexts() As Tetris
@@ -60,6 +58,7 @@ Private Type Variable
     FallingShape As TetrominoShape
     FallingPiece As Tetromino
     TestPiece As Tetromino
+    GhostPiece As Tetromino
     ' Level
     Level As Long
     LinesCleared As Long
@@ -69,6 +68,8 @@ Private Type Variable
     PieceStayTime As Long
     LastPressedKey As Integer
     LastMoveDownTime As Long
+    ' Kick
+    KickTable As Variant
 End Type
 '-----------------------------------------------------------------------------80
 Private This As Variable
@@ -165,9 +166,7 @@ End With
 End Property
 '-----------------------------------------------------------------------------80
 Private Property Let Message(ByVal str As String)
-With This
-    Let .Worksheet.Range("U24").Value2 = str
-End With
+    Let This.Worksheet.Range("U24").Value2 = str
 End Property
 '=============================================================================80
 ' Read-Write Property
@@ -236,7 +235,7 @@ With This
         Set .IncomingShapes = New Collection
         Call AddBag
         Set .Held = Tetris.GetTetris(.Worksheet, "U11", 2, 4, True)
-        ReDim .Nexts(1 To 6) As Tetris
+        ReDim .Nexts(1 To 6)
         
         Set .Nexts(1) = Tetris.GetTetris(.Worksheet, "C11", 2, 4, True)
         Set .Nexts(2) = Tetris.GetTetris(.Worksheet, "C14", 2, 4, True)
@@ -256,6 +255,7 @@ With This
     Next Tet
     
     ' Some settings
+    Let .KickTable = GetKickTable
     Let Level = 1
     Let GameState = 1
     Let Score = 0
@@ -269,13 +269,13 @@ Private Sub GameLoop()
     'On Error GoTo Err
     
     Dim Time As Long, LastRepeatTime As Long, LastKeyPressedTime As Long
-    Dim LastMoveDownTime: Let LastMoveDownTime = TimerInMilliseconds()
+    Dim LastMoveDownTime As Long: Let LastMoveDownTime = 1000 * Timer()
     ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
     With This
    '| Decrease indentation level
     Do While .GameState >= 0
         If .GameState > 0 Then
-            Let Time = TimerInMilliseconds()
+            Let Time = 1000 * Timer()
             If Time - LastMoveDownTime >= .PieceStayTime Then
                 Call Translate(1, 0, True, True)
                 Let LastMoveDownTime = Time
@@ -324,11 +324,11 @@ Private Sub GameLoop()
                 ' Left, right, and down arrows are the same as on the console.
                 Case GetAsyncKeyState(vbKeyLeft) And &H8000
                     If .LastPressedKey <> vbKeyLeft Then
-                        Let LastKeyPressedTime = TimerInMilliseconds()
+                        Let LastKeyPressedTime = 1000 * Timer()
                         Let .LastPressedKey = vbKeyLeft
                         Call Translate(0, -1, True, True)
                     Else
-                        Let Time = TimerInMilliseconds()
+                        Let Time = 1000 * Timer()
                         If Time - LastKeyPressedTime >= RepeatDelay Then
                             If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
                                 Let LastRepeatTime = Time
@@ -338,11 +338,11 @@ Private Sub GameLoop()
                     End If
                 Case GetAsyncKeyState(vbKeyRight) And &H8000
                     If .LastPressedKey <> vbKeyRight Then
-                        Let LastKeyPressedTime = TimerInMilliseconds()
+                        Let LastKeyPressedTime = 1000 * Timer()
                         Let .LastPressedKey = vbKeyRight
                         Call Translate(0, 1, True, True)
                     Else
-                        Let Time = TimerInMilliseconds()
+                        Let Time = 1000 * Timer()
                         If Time - LastKeyPressedTime >= RepeatDelay Then
                             If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
                                 Let LastRepeatTime = Time
@@ -352,15 +352,15 @@ Private Sub GameLoop()
                     End If
                 Case GetAsyncKeyState(vbKeyDown) And &H8000
                     If .LastPressedKey <> vbKeyDown Then
-                        Let LastKeyPressedTime = TimerInMilliseconds()
+                        Let LastKeyPressedTime = 1000 * Timer()
                         Let .LastPressedKey = vbKeyDown
-                        Call SoftDown
+                        Call SoftDrop
                     Else
-                        Let Time = TimerInMilliseconds()
+                        Let Time = 1000 * Timer()
                         If Time - LastKeyPressedTime >= RepeatDelay Then
                             If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
                                 Let LastRepeatTime = Time
-                                Call SoftDown
+                                Call SoftDrop
                             End If
                         End If
                     End If
@@ -392,31 +392,16 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub InitializeCells()
 With This
-    Dim X As Long, Y As Long
+    Dim x As Long, y As Long
+    ReDim .Matrix(1 To .Height, 1 To .Width)
     
-    ReDim .Matrix(1 To .Height, 1 To .Width) As Cell
-    ReDim .Rows(1 To .Height) As Variant
-    
-    Dim Arr() As Cell
-    
-    For X = 1 To .Height
-        ReDim Arr(1 To .Width) As Cell
-        Let .Rows(X) = Arr
-    Next X
-    
-    For X = 1 To .Height
-        For Y = 1 To .Width
-            Set .Matrix(X, Y) = New Cell
-            Let .Matrix(X, Y).BackgroundColor = BackgroundColor
-            Set .Matrix(X, Y).Range = .Board(X, Y)
-        Next Y
-    Next X
-    
-    For X = 1 To .Height
-        For Y = 1 To .Width
-            Set .Rows(X)(Y) = .Matrix(X, Y)
-        Next Y
-    Next X
+    For x = 1 To .Height
+        For y = 1 To .Width
+            Set .Matrix(x, y) = New Cell
+            Let .Matrix(x, y).BackgroundColor = BackgroundColor
+            Set .Matrix(x, y).Range = .Board(x, y)
+        Next y
+    Next x
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -463,10 +448,10 @@ End Sub
 '=============================================================================80
 Private Sub LinkPiece()
 With This
-    Dim B As Block
+    Dim B As Variant
     For Each B In .FallingPiece.Blocks
-        Set .Matrix(B.X, B.Y).Block = B
-        Call AddChangedCell(.Matrix(B.X, B.Y))
+        Set .Matrix(B.x, B.y).Block = B
+        Call AddChangedCell(.Matrix(B.x, B.y))
     Next B
 End With
 End Sub
@@ -474,10 +459,10 @@ End Sub
 Private Sub UnlinkPiece()
 With This
     If Not .FallingPiece Is Nothing Then
-        Dim B As Block
+        Dim B As Variant
         For Each B In .FallingPiece.Blocks
-            Set .Matrix(B.X, B.Y).Block = Nothing
-            Call AddChangedCell(.Matrix(B.X, B.Y))
+            Set .Matrix(B.x, B.y).Block = Nothing
+            Call AddChangedCell(.Matrix(B.x, B.y))
         Next B
     End If
 End With
@@ -496,12 +481,12 @@ Private Function IsTestPieceValid() As Boolean
 With This
     Let IsTestPieceValid = True
     
-    Dim B As Block
+    Dim B As Variant
     For Each B In .TestPiece.Blocks
-        If B.X > .Height Or B.Y < 1 Or B.Y > .Width Then
+        If B.x > .Height Or B.y < 1 Or B.y > .Width Then
             Let IsTestPieceValid = False
             Exit For
-        ElseIf .Matrix(B.X, B.Y).State = 0 Then
+        ElseIf .Matrix(B.x, B.y).State = 0 Then
             Let IsTestPieceValid = False
             Exit For
         End If
@@ -519,19 +504,19 @@ End Sub
 Private Function SpawnIncoming(Optional ByVal AcceptOnSuccess As Boolean, _
                                Optional ByVal DrawOnSuccess As Boolean) As Boolean
 With This
-    Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = TetrominoShape.OShape, 1, 2), IIf(.IsShowcase, 2, 5))
+    Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     
     If IsTestPieceValid() Then
         Let SpawnIncoming = True
         If AcceptOnSuccess Then
             Let .FallingShape = .IncomingShapes(1)
-            Call .IncomingShapes.Remove(1)
+            Call .IncomingShapes.Remove(1) ' Queue
             If .IncomingShapes.Count = 6 Then Call AddBag
         
-            Dim k As Long
-            For k = 1 To 6
-                Call .Nexts(k).Spawn(.IncomingShapes(k))
-            Next k
+            Dim i As Long
+            For i = 1 To 6
+                Call .Nexts(i).Spawn(.IncomingShapes(i))
+            Next i
             
             Call Spawn
             'Call AcceptTestPiece(DrawOnSuccess)
@@ -546,7 +531,7 @@ Public Sub Spawn(Optional ByVal Shape As TetrominoShape)
 With This
     If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call UnlinkPiece
     If Shape <> 0 Then Let .FallingShape = Shape
-    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = TetrominoShape.OShape, 1, 2), IIf(.IsShowcase, 2, 5))
+    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     Call LinkPiece
     Call DrawChanged
 End With
@@ -581,39 +566,39 @@ End Function
 '=============================================================================80
 ' Method: Translation
 '=============================================================================80
-Private Function Translate(ByVal X As Long, ByVal Y As Long, _
+Private Function Translate(ByVal x As Long, ByVal y As Long, _
                            Optional ByVal AcceptOnSuccess As Boolean, _
                            Optional ByVal DrawOnSuccess As Boolean) As Boolean
 With This
     Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Translate(X, Y)
+    Call .TestPiece.Translate(x, y)
     If IsTestPieceValid() Then
         Let Translate = True
         If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
-    ElseIf X = 1 Then
+    ElseIf x = 1 Then
         Call Ground
     End If
 End With
 End Function
 '-----------------------------------------------------------------------------80
-Private Sub SoftDown()
-    If Translate(1, 0, True, True) Then Call ScoreAdd(1)
+Private Sub SoftDrop()
+    If Translate(1, 0, True, True) Then Let Score = 1 + This.Score
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub HardDrop()
 With This
-    Dim X As Long
+    Dim x As Long
     Set .TestPiece = .FallingPiece.Copy
     
     Do
-        Let X = 1 + X
+        Let x = 1 + x
         Call .TestPiece.Translate(1, 0)
     Loop While IsTestPieceValid()
     
     Call .TestPiece.Translate(-1, 0)
     Call AcceptTestPiece(True)
     Call Ground
-    Call ScoreAdd(2 * (X - 1))
+    Let Score = 2 * (x - 1) + .Score
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -621,11 +606,11 @@ Private Sub Ground()
 With This
     Let .IsHeld = False
     
-    Dim B As Block
+    Dim B As Variant
     For Each B In .FallingPiece.Blocks
         Set B.Parent = Nothing
-        Set .Matrix(B.X, B.Y).Block = B
-        If B.X < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.X
+        Set .Matrix(B.x, B.y).Block = B
+        If B.x < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.x
     Next B
     
     Let Message = vbNullString
@@ -636,12 +621,6 @@ End Sub
 '=============================================================================80
 ' Method: Rotation
 '=============================================================================80
-' Stance of piece if rotate CW (or CCW) N times
-' | N   | 0 | 1 | 2 | 3 |
-' |-----|---|---|---|---|
-' | CCW | 0 | 1 | 2 | 3 |
-' | CW  | 0 | 3 | 2 | 1 |
-' If basic rotation fails, from the rotated stance, test by moving piece
 Private Function Rotate(ByVal Sign As Long, _
                         Optional ByVal AcceptOnSuccess As Boolean, _
                         Optional ByVal DrawOnSuccess As Boolean) As Boolean
@@ -651,207 +630,248 @@ With This
     If IsTestPieceValid() Then
         Let Rotate = True
         If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
-    ElseIf Kick() Then
-        Let Rotate = True
-        Let Message = "Wall kick."
-        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+'    ElseIf Kick() Then
+'        Let Rotate = True
+'        Let Message = "Wall kick"
+'        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+    Else ' Kick
+        Dim Test As Variant
+        For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, .TestPiece.Stance)
+            Call .TestPiece.Translate(Test(0), Test(1))
+            
+            If IsTestPieceValid() Then
+                Let Rotate = True
+                Let Message = "Wall kick"
+                If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+                Exit For
+            End If
+        Next Test
     End If
 End With
 End Function
-' SRS Kick Table for shape T, J, L, S, Z:
-' ---------------------------------------------------
-' |From| To |  Test1  |  Test2  |  Test3  |  Test4  | Transition
-' |----|----|---------|---------|---------|---------|
-' |  0 |  1 | ( 0, 1) | (-1, 1) | ( 2, 0) | ( 2, 1) |   1
-' |  1 |  2 | ( 0,-1) | ( 1,-1) | (-2, 0) | (-2,-1) |  12
-' |  2 |  3 | ( 0,-1) | (-1,-1) | ( 2, 0) | ( 2,-1) |  23
-' |  3 |  0 | ( 0, 1) | ( 1, 1) | (-2, 0) | (-2, 1) |  30
-' |  0 |  3 |     Negetive of transition 3 -> 0     |   3
-' |  3 |  2 |     Negetive of transition 2 -> 3     |  32
-' |  2 |  1 |     Negetive of transition 1 -> 2     |  21
-' |  1 |  0 |     Negetive of transition 0 -> 1     |  10
-' ---------------------------------------------------
+'-----------------------------------------------------------------------------80
+'Private Function Kick() As Boolean
+'With This
+'    Dim Test As Variant
+'    For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, .TestPiece.Stance)
+'        Call .TestPiece.Translate(Test(0), Test(1))
 '
+'        If IsTestPieceValid() Then
+'            Let Kick = True
+'            Exit For
+'        End If
+'    Next Test
+'End With
+'End Function
+'-----------------------------------------------------------------------------80
+Private Function GetKickTable() As Variant
+    Dim KickTable As Variant: ReDim KickTable(1 To 7, 0 To 3, 0 To 3)
+    
+    Dim i As Long, j As Long, k As Long
+    For i = 1 To 7
+        For j = 0 To 3
+            For k = 0 To 3
+                Let KickTable(i, j, k) = GetKickTests(i, j, k)
+            Next k
+        Next j
+    Next i
+    
+    Let GetKickTable = KickTable
+End Function
+'-----------------------------------------------------------------------------80
+' Stance of piece if rotate CW (or CCW) N times
+' | N   | 0 | 1 | 2 | 3 |
+' |-----|---|---|---|---|
+' | CCW | 0 | 1 | 2 | 3 |
+' | CW  | 0 | 3 | 2 | 1 |
+' If basic rotation fails, from the rotated stance, test by moving piece
+'-----------------------------------------------------------------------------80
 ' SRS Kick Table for shape I:
-' ---------------------------------------------------
-' |From| To |  Test1  |  Test2  |  Test3  |  Test4  | Transition
-' |----|----|---------|---------|---------|---------|
-' |  0 |  1 | ( 0,-1) | ( 0, 2) | (-2,-1) | ( 1, 2) |   1
-' |  1 |  2 | ( 0,-2) | ( 0, 1) | ( 1,-2) | (-2, 1) |  12
-' |  2 |  3 |     Negetive of transition 0 -> 1     |  23
-' |  3 |  0 |     Negetive of transition 1 -> 2     |  30
-' |  0 |  3 |     Negetive of transition 3 -> 0     |   3
-' |  3 |  2 |     Negetive of transition 2 -> 3     |  32
-' |  2 |  1 |     Negetive of transition 1 -> 2     |  21
-' |  1 |  0 |     Negetive of transition 0 -> 1     |  10
-' ---------------------------------------------------
+' -------------------------------------------------------------------------------------------------
+' |From| To |  Test1  |  Test2  |  Test3  |  Test4  |Trans|  Test1  |  T2-T1  |  T3-T2  |  T4-T3  |
+' |----|----|---------|---------|---------|---------|-----|---------|---------|---------|---------|
+' |  0 |  1 | ( 0,-1) | ( 0, 2) | (-2,-1) | ( 1, 2) |   1 | ( 0,-1) | ( 0, 3) | (-2,-3) | ( 3, 3) |
+' |  1 |  2 | ( 0,-2) | ( 0, 1) | ( 1,-2) | (-2, 1) |  12 | ( 0,-2) | ( 0, 3) | ( 1,-3) | (-3, 3) |
+' |  2 |  3 |     Negetive of transition 0 -> 1     |  23 |                                       |
+' |  3 |  0 |     Negetive of transition 1 -> 2     |  30 |                                       |
+' |  0 |  3 |     Negetive of transition 3 -> 0     |   3 |                                       |
+' |  3 |  2 |     Negetive of transition 2 -> 3     |  32 |                                       |
+' |  2 |  1 |     Negetive of transition 1 -> 2     |  21 |                                       |
+' |  1 |  0 |     Negetive of transition 0 -> 1     |  10 |                                       |
+' -------------------------------------------------------------------------------------------------
 ' (0 -> 3) = (1 -> 2)
 ' (3 -> 2) = (0 -> 1)
 ' (2 -> 1) = (3 -> 0) = - (1 -> 2)
 ' (1 -> 0) = (2 -> 3) = - (0 -> 1)
-Private Function Kick() As Boolean
-With This
-    Dim Transition As Long: Let Transition = 10 * .FallingPiece.Stance + .TestPiece.Stance
+'-----------------------------------------------------------------------------80
+' SRS Kick Table for shape T, J, L, S, Z:
+' -------------------------------------------------------------------------------------------------
+' |From| To |  Test1  |  Test2  |  Test3  |  Test4  |Trans|  Test1  |  T2-T1  |  T3-T2  |  T4-T3  |
+' |----|----|---------|---------|---------|---------|-----|---------|---------|---------|---------|
+' |  0 |  1 | ( 0, 1) | (-1, 1) | ( 2, 0) | ( 2, 1) |   1 | ( 0, 1) | (-1, 0) | ( 3,-1) | ( 0, 1) |
+' |  1 |  2 |     Negetive of transition 0 -> 1     |  12 |                                       |
+' |  2 |  3 | ( 0,-1) | (-1,-1) | ( 2, 0) | ( 2,-1) |  23 | ( 0,-1) | (-1, 0) | ( 3, 1) | ( 0,-1) |
+' |  3 |  0 |     Negetive of transition 2 -> 3     |  30 |                                       |
+' |  0 |  3 |     Negetive of transition 3 -> 0     |   3 |                                       |
+' |  3 |  2 |     Negetive of transition 2 -> 3     |  32 |                                       |
+' |  2 |  1 |     Negetive of transition 1 -> 2     |  21 |                                       |
+' |  1 |  0 |     Negetive of transition 0 -> 1     |  10 |                                       |
+' -------------------------------------------------------------------------------------------------
+' (0 -> 3) = (2 -> 3)
+' (3 -> 2) = (3 -> 0) = - (2 -> 3)
+' (2 -> 1) = (0 -> 1)
+' (1 -> 0) = (1 -> 2) = - (0 -> 1)
+'-----------------------------------------------------------------------------80
+Private Function GetKickTests(ByVal Shape As TetrominoShape, _
+                              ByVal FromStance As Long, ByVal ToStance As Long) As Variant
     Dim Tests As Variant, Sign As Long
+    Dim Transition As Long: Let Transition = 10 * FromStance + ToStance
     
-    If .FallingShape = TetrominoShape.IShape Then
-        Select Case Transition
-            Case 1, 10, 23, 32: Let Tests = Array(Array(0, -1), Array(0, 2), Array(-2, -1), Array(1, 2))
-            Case 3, 12, 21, 30: Let Tests = Array(Array(0, -2), Array(0, 1), Array(1, -2), Array(-2, 1))
-        End Select
+    Select Case Shape
+        Case IShape
+            Select Case Transition
+                Case 1, 10, 23, 32: Let Tests = Array(Array(0, -1), Array(0, 3), Array(-2, -3), Array(3, 3))
+                Case 3, 12, 21, 30: Let Tests = Array(Array(0, -2), Array(0, 3), Array(1, -3), Array(-3, 3))
+            End Select
+            
+            Select Case Transition
+                Case 1, 3, 12, 32: Let Sign = 1
+                Case Else: Let Sign = -1
+            End Select
+        Case TShape, JShape, LShape, SShape, ZShape
+            Select Case Transition
+                Case 1, 10, 12, 21: Let Tests = Array(Array(0, 1), Array(-1, 0), Array(3, -1), Array(0, 1))
+                Case 3, 23, 30, 32: Let Tests = Array(Array(0, -1), Array(-1, 0), Array(3, 1), Array(0, -1))
+            End Select
+            
+            Select Case Transition
+                Case 1, 3, 21, 23: Let Sign = 1
+                Case Else: Let Sign = -1
+            End Select
+    End Select
+    
+    If IsArray(Tests) Then
+        Let Tests(0)(0) = Sign * Tests(0)(0)
+        Let Tests(0)(1) = Sign * Tests(0)(1)
+        Let Tests(1)(0) = Sign * Tests(1)(0)
+        Let Tests(1)(1) = Sign * Tests(1)(1)
+        Let Tests(2)(0) = Sign * Tests(2)(0)
+        Let Tests(2)(1) = Sign * Tests(2)(1)
+        Let Tests(3)(0) = Sign * Tests(3)(0)
+        Let Tests(3)(1) = Sign * Tests(3)(1)
         
-        Select Case Transition
-            Case 1, 3, 12, 32: Let Sign = 1
-            Case Else: Let Sign = -1
-        End Select
-    Else
-        Select Case Transition
-            Case 1, 10: Let Tests = Array(Array(0, 1), Array(-1, 1), Array(2, 0), Array(2, 1))
-            Case 12, 21: Let Tests = Array(Array(0, -1), Array(1, -1), Array(-2, 0), Array(-2, -1))
-            Case 23, 32: Let Tests = Array(Array(0, -1), Array(-1, -1), Array(2, 0), Array(2, -1))
-            Case 3, 30: Let Tests = Array(Array(0, 1), Array(1, 1), Array(-2, 0), Array(-2, 1))
-        End Select
-        
-        Select Case Transition
-            Case 1, 12, 23, 30: Let Sign = 1
-            Case Else: Let Sign = -1
-        End Select
+        Let GetKickTests = Tests
     End If
-    
-    Dim test As Variant
-    For Each test In Tests
-        'Debug.Print "X: " & .TestPiece.X & ", Y: " & .TestPiece.Y & " (Center)"
-        Call .TestPiece.Translate(Sign * test(0), Sign * test(1))
-        'Debug.Print "X: " & Sign * test(0) & ", Y: " & Sign * test(1) & " (Transition: " & Transition & ")"
-        
-        If IsTestPieceValid() Then
-            Let Kick = True
-            Exit For
-        End If
-    Next test
-End With
 End Function
 '=============================================================================80
 ' Method: Clearing
 '=============================================================================80
 Private Sub ClearLines()
 With This
-    If .FirstNonEmptyRow = .Height Then Exit Sub
-    
-    Dim X As Long, IsLine As Boolean, C As Variant, Xv As Variant
-    
+    Dim x As Long, y As Long, i As Long
     Dim Lines As Collection: Set Lines = New Collection
-    Dim RowMoveDownStep() As Long: ReDim RowMoveDownStep(1 To .Height) As Long
-    'Dim MoveRow() As Long: ReDim MoveRow(.FirstNonEmptyRow To .Height - 1) As Long
-    
-'    For X = .FirstNonEmptyRow To .Height - 1
-'        Let MoveRow(X) = X
-'    Next X
-    
-    ' Determine row number of lines
-    For X = .Height To .FirstNonEmptyRow Step -1
-        Let IsLine = True
+    Dim MoveRow() As Long: ReDim MoveRow(.FirstNonEmptyRow To .Height)
+    ' Determine the mapping MoveRow: SourceRow |-> TargetRow, where SourceRow has at least one block
+    For x = .Height To .FirstNonEmptyRow Step -1
+        For y = 1 To .Width
+            If .Matrix(x, y).State <> 0 Then Exit For
+        Next y
         
-        For Each C In .Rows(X)
-            If C.State <> 0 Then
-                Let IsLine = False
-                Exit For
-            End If
-        Next C
+        If y = 1 + .Width Then
+            For i = .FirstNonEmptyRow To x - 1
+                Let MoveRow(i) = 1 + MoveRow(i)
+            Next i
+            
+            Call Lines.Add(x)
+            Let MoveRow(x) = 0
+        End If
         
-        If IsLine Then Call Lines.Add(X)
-    Next X
+        Let MoveRow(x) = x + MoveRow(x)
+    Next x
     
     If Lines.Count Then
-        For Each Xv In Lines
-            For X = .FirstNonEmptyRow To Xv - 1
-                Let RowMoveDownStep(X) = 1 + RowMoveDownStep(X)
-                'Let MoveRow(X) = 1 + MoveRow(X)
-            Next X
-            'Let MoveRow(X) = 0
-            Let RowMoveDownStep(Xv) = 0
-            ' Delete Row
-            For Each C In .Rows(Xv)
-                Set C.Block = Nothing
-                Call AddChangedCell(C)
-            Next C
-        Next Xv
-        
-        For X = Lines(1) - 1 To .FirstNonEmptyRow Step -1
-            If RowMoveDownStep(X) <> 0 Then Call MoveRowDown(X, RowMoveDownStep(X))
+        ' Move rows down
+        For x = Lines(1) - 1 To .FirstNonEmptyRow Step -1
             'If MoveRow(X) <> 0 Then Call MoveRowToRow(X, MoveRow(X))
-        Next X
+            If MoveRow(x) <> 0 Then
+                For y = 1 To .Width
+                    With .Matrix(MoveRow(x), y)
+                        If .Color <> This.Matrix(x, y).Color Then
+                            Set .Block = This.Matrix(x, y).Block
+                            Call AddChangedCell(.Self)
+                        End If
+                    End With
+                Next y
+            End If
+        Next x
+        ' Clear rows
+        For x = .FirstNonEmptyRow To -1 + Lines.Count + .FirstNonEmptyRow
+            'Call DeleteRow(X)
+            For y = 1 To .Width
+                With .Matrix(x, y)
+                    If .State = 0 Then
+                        Set .Block = Nothing
+                        Call AddChangedCell(.Self)
+                    End If
+                End With
+            Next y
+        Next x
         
         Let .FirstNonEmptyRow = Lines.Count + .FirstNonEmptyRow
         Let LinesCleared = Lines.Count + .LinesCleared
-        Call ScoreAdd(100 * Choose(Lines.Count, 1, 3, 5, 8) * .Level)
+        Let Score = 100 * Choose(Lines.Count, 1, 3, 5, 8) * .Level + .Score
         Let Message = Choose(Lines.Count, "Single", "Double", "Triple", "Tetris!")
     End If
 End With
 End Sub
 '-----------------------------------------------------------------------------80
-'Private Sub MoveRowToRow(ByVal X As Long, ByVal NewX As Long)
+'Private Sub MoveRowToRow(ByVal X As Long, ByVal ToX As Long)
 'With This
-'    Dim C As Variant
-'    For Each C In .Rows(X)
-'        If C.State = 0 Then
-'            With .Matrix(Step + C.Block.X, C.Block.Y)
-'                Set .Block = C.Block
-'                Let .Block.X = Step + .Block.X
-'                Set C.Block = Nothing
+'    Dim Y As Long
+'    For Y = 1 To .Width
+'        With This.Matrix(X, Y).Matrix(ToX, Y)
+'            If .Color <> C.Color Then
+'                Set .Block = This.Matrix(X, Y).Block
+'                'If .State = 0 Then Let .Block.X = ToX
 '                Call AddChangedCell(.Self)
-'            End With
-'
-'            Call AddChangedCell(C)
-'        End If
-'    Next C
+'            End If
+'        End With
+'    Next Y
 'End With
 'End Sub
-Private Sub MoveRowDown(ByVal X As Long, ByVal Step As Long)
-With This
-    Dim C As Variant
-    For Each C In .Rows(X)
-        If C.State = 0 Then
-            With .Matrix(Step + C.Block.X, C.Block.Y)
-                Set .Block = C.Block
-                Let .Block.X = Step + .Block.X
-                Set C.Block = Nothing
-                Call AddChangedCell(.Self)
-            End With
-            
-            Call AddChangedCell(C)
-        End If
-    Next C
-End With
-End Sub
+'-----------------------------------------------------------------------------80
+'Private Sub DeleteRow(ByVal X As Long)
+'With This
+'    Dim Y As Long
+'    For Y = 1 To .Width
+'        With .Matrix(X, Y)
+'            If .State = 0 Then
+'                Set .Block = Nothing
+'                Call AddChangedCell(.Self)
+'            End If
+'        End With
+'    Next Y
+'End With
+'End Sub
 '=============================================================================80
 ' Helper Function
 '=============================================================================80
-Private Sub ScoreAdd(ByVal ScoreToAdd As Long)
-    Let Score = ScoreToAdd + This.Score
-End Sub
-'-----------------------------------------------------------------------------80
-Private Function TimerInMilliseconds() As Long
-    Let TimerInMilliseconds = 1000 * Timer
-End Function
-'-----------------------------------------------------------------------------80
 ' http://www.cpearson.com/excel/ShuffleArray.aspx
 Private Function ShuffleArray(InArray As Variant) As Variant
-    Dim N As Long, k As Long, L As Long
-    Dim temp As Long, Arr() As Variant
+    Dim N As Long, k As Long, Temp As Long
+    Dim Arr() As Variant: ReDim Arr(LBound(InArray) To UBound(InArray))
     
     Call Randomize
-    Let L = UBound(InArray) - LBound(InArray) + 1
-    ReDim Arr(LBound(InArray) To UBound(InArray))
+    
     For N = LBound(InArray) To UBound(InArray)
         Let Arr(N) = InArray(N)
     Next N
     
     For N = LBound(InArray) To UBound(InArray)
         Let k = CLng(((UBound(InArray) - N) * Rnd) + N)
-        Let temp = Arr(N)
+        Let Temp = Arr(N)
         Let Arr(N) = Arr(k)
-        Let Arr(k) = temp
+        Let Arr(k) = Temp
     Next N
     
     Let ShuffleArray = Arr

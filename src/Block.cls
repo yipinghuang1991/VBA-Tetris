@@ -20,8 +20,8 @@ Private Type Variable
     HasParent As Boolean
     Parent As Tetromino
     IsZeroCollapsed As Boolean
-    X As Long
-    Y As Long
+    x As Long
+    y As Long
     Color As Long
 End Type
 '-----------------------------------------------------------------------------80
@@ -41,8 +41,8 @@ Public Property Set Parent(ByRef Parent As Tetromino)
 With This
     If .HasParent And (Parent Is Nothing) Then
         Let .HasParent = False
-        Let .X = .Parent.X + .X
-        Let .Y = .Parent.Y + .Y
+        Let .x = .Parent.x + .x
+        Let .y = .Parent.y + .y
         Let .Color = .Parent.Color
     ElseIf (Not .HasParent) And (Not Parent Is Nothing) Then
         Let .HasParent = True
@@ -60,30 +60,30 @@ End Property
 '=============================================================================80
 ' Read-Write Property
 '=============================================================================80
-Public Property Get X() As Long
+Public Property Get x() As Long
 With This
     If .HasParent Then
-        Let X = .Parent.X + .X
+        Let x = .Parent.x + .x
     Else
-        Let X = .X
+        Let x = .x
     End If
 End With
 End Property
-Public Property Let X(ByVal X As Long)
-    Let This.X = X
+Public Property Let x(ByVal x As Long)
+    Let This.x = x
 End Property
 '-----------------------------------------------------------------------------80
-Public Property Get Y() As Long
+Public Property Get y() As Long
 With This
     If .HasParent Then
-        Let Y = .Parent.Y + .Y
+        Let y = .Parent.y + .y
     Else
-        Let Y = .Y
+        Let y = .y
     End If
 End With
 End Property
-Public Property Let Y(ByVal Y As Long)
-    Let This.Y = Y
+Public Property Let y(ByVal y As Long)
+    Let This.y = y
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Get Color() As Long
@@ -101,14 +101,14 @@ End Property
 '=============================================================================80
 ' Constructor
 '=============================================================================80
-Public Function GetBlock(ByVal X As Long, ByVal Y As Long, _
+Public Function GetBlock(ByVal x As Long, ByVal y As Long, _
                          Optional ByVal IsZeroCollapsed As Boolean, _
                          Optional ByRef Parent As Tetromino, _
                          Optional ByVal Color As Long = 16777215) As Block
 With New Block
     Let .IsZeroCollapsed = IsZeroCollapsed
-    Let .X = X
-    Let .Y = Y
+    Let .x = x
+    Let .y = y
     
     If Parent Is Nothing Then
         Let .Color = Color
@@ -122,7 +122,7 @@ End Function
 '-----------------------------------------------------------------------------80
 Public Function Copy() As Block
 With This
-    Set Copy = GetBlock(.X, .Y, .IsZeroCollapsed, .Parent, .Color)
+    Set Copy = GetBlock(.x, .y, .IsZeroCollapsed, .Parent, .Color)
 End With
 End Function
 '=============================================================================80
@@ -135,9 +135,9 @@ With This
         Call Rotate(Sign)
         Call CollapsedZero
     Else
-        Dim XSave As Long: Let XSave = .X
-        Let .X = -Sign * .Y
-        Let .Y = Sign * XSave
+        Dim XSave As Long: Let XSave = .x
+        Let .x = -Sign * .y
+        Let .y = Sign * XSave
     End If
 End With
 End Sub
@@ -149,8 +149,8 @@ With This
         Call Reflect(XAxis, YAxis)
         Call CollapsedZero
     Else
-        If XAxis Then Let .Y = -.Y
-        If YAxis Then Let .X = -.X
+        If XAxis Then Let .y = -.y
+        If YAxis Then Let .x = -.x
     End If
 End With
 End Sub
@@ -159,16 +159,16 @@ End Sub
 '=============================================================================80
 Private Sub CollapsedZero()
 With This
-    If .X < 0 Then Let .X = .X + 1
-    If .Y < 0 Then Let .Y = .Y + 1
+    If .x < 0 Then Let .x = .x + 1
+    If .y < 0 Then Let .y = .y + 1
     Let .IsZeroCollapsed = True
 End With
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub UncollapseZero()
 With This
-    If .X <= 0 Then Let .X = .X - 1
-    If .Y <= 0 Then Let .Y = .Y - 1
+    If .x <= 0 Then Let .x = .x - 1
+    If .y <= 0 Then Let .y = .y - 1
     Let .IsZeroCollapsed = False
 End With
 End Sub
