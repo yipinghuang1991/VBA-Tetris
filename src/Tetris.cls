@@ -495,6 +495,66 @@ End Sub
 '=============================================================================80
 ' Method: Tetromino
 '=============================================================================80
+'Private Sub ReplacePiece(Optional ByRef PieceToUnlink As Tetromino, _
+'                         Optional ByRef PieceToLink As Tetromino)
+'With This
+'    Dim BU As Variant, BL As Variant, IsContainedIn As Boolean
+'
+'    For Each BU In PieceToUnlink.Blocks
+'        Set .Matrix(BU.x, BU.y).Block = Nothing
+'        Let IsContainedIn = False
+'
+'        For Each BL In PieceToLink.Blocks
+'            If BU.x = BL.x And BU.y = BL.y Then
+'                Let IsContainedIn = True
+'                Exit For
+'            End If
+'        Next BL
+'
+'        If Not IsContainedIn Then Call AddChangedCell(.Matrix(BU.x, BU.y))
+'    Next BU
+'
+'    For Each BL In PieceToLink.Blocks
+'        Set .Matrix(BL.x, BL.y).Block = BL
+'
+'        For Each BU In PieceToUnlink.Blocks
+'            If BU.x = BL.x And BU.y = BL.y Then
+'                If BU.Color <> BL.Color Then _
+'                    Call AddChangedCell(.Matrix(BL.x, BL.y))
+'            End If
+'        Next BU
+'    Next BL
+'
+'    Set PieceToUnlink = PieceToLink
+'End With
+'End Sub
+'-----------------------------------------------------------------------------80
+Private Sub ReplacePiece(Optional ByRef PieceToUnlink As Tetromino, _
+                         Optional ByRef PieceToLink As Tetromino, _
+                         Optional ByVal Draw As Boolean)
+With This
+    Dim B As Variant
+    
+    If Not PieceToUnlink Is Nothing Then
+        For Each B In PieceToUnlink.Blocks
+            Set .Matrix(B.x, B.y).Block = Nothing
+            Call AddChangedCell(.Matrix(B.x, B.y))
+        Next B
+    End If
+    
+    If Not PieceToLink Is Nothing Then
+        For Each B In PieceToLink.Blocks
+            Set .Matrix(B.x, B.y).Block = B
+            Call AddChangedCell(.Matrix(B.x, B.y))
+        Next B
+    End If
+    
+    Set PieceToUnlink = PieceToLink
+    
+    If Draw Then Call DrawChanged
+End With
+End Sub
+'-----------------------------------------------------------------------------80
 Private Sub LinkPiece(ByRef Piece As Tetromino)
 With This
     Dim B As Variant
@@ -514,15 +574,6 @@ With This
             Call AddChangedCell(.Matrix(B.x, B.y))
         Next B
     End If
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub AcceptTestPiece(Optional ByVal Draw As Boolean)
-With This
-    Call UnlinkPiece(.FallingPiece)
-    Set .FallingPiece = .TestPiece
-    Call LinkPiece(.FallingPiece)
-    If Draw Then Call DrawChanged
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -568,7 +619,6 @@ With This
             Next i
             
             Call Spawn
-            'Call AcceptTestPiece(DrawOnSuccess)
         End If
     Else
         Let GameState = -1
@@ -578,21 +628,19 @@ End Function
 '-----------------------------------------------------------------------------80
 Public Sub Spawn(Optional ByVal Shape As TetrominoShape)
 With This
-    If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call UnlinkPiece(.FallingPiece)
+    If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call ReplacePiece(.FallingPiece)
     If Shape <> 0 Then Let .FallingShape = Shape
     Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
-    Call LinkPiece(.FallingPiece)
-    Call DrawChanged
+    Call ReplacePiece(, .FallingPiece, True)
 End With
 End Sub
 '-----------------------------------------------------------------------------80
 Public Sub ForceSpawn(ByVal Shape As TetrominoShape)
 With This
-    Call UnlinkPiece(.FallingPiece)
+    Call ReplacePiece(.FallingPiece)
     Let .FallingShape = Shape
     Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
-    Call LinkPiece(.FallingPiece)
-    Call DrawChanged
+    Call ReplacePiece(, .FallingPiece, True)
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -603,7 +651,7 @@ With This
     Else
         Let .IsHeld = True
         
-        Call UnlinkPiece(.FallingPiece)
+        Call ReplacePiece(.FallingPiece)
         
         Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
         Let .HeldShape = .FallingShape
@@ -633,7 +681,8 @@ With This
     Call .TestPiece.Translate(x, y)
     If IsPieceValid(.TestPiece) Then
         Let Translate = True
-        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+        If AcceptOnSuccess Then _
+            Call ReplacePiece(.FallingPiece, .TestPiece, DrawOnSuccess)
     ElseIf x = 1 Then
         Call Ground
     End If
@@ -655,7 +704,7 @@ With This
     Loop While IsPieceValid(.TestPiece)
     
     Call .TestPiece.Translate(-1, 0)
-    Call AcceptTestPiece(True)
+    Call ReplacePiece(.FallingPiece, .TestPiece, True)
     Call Ground
     Let Score = 2 * (x - 1) + .Score
 End With
@@ -665,7 +714,7 @@ Private Sub UpdateGhostPiece()
 With This
     Dim x As Long
     
-    Call UnlinkPiece(.GhostPiece)
+    Call ReplacePiece(.GhostPiece)
     
     Set .GhostPiece = .FallingPiece.Copy
 
@@ -676,7 +725,7 @@ With This
 
     Call .GhostPiece.Translate(-1, 0)
     
-    Call LinkPiece(.GhostPiece)
+    Call ReplacePiece(, .GhostPiece)
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -707,7 +756,8 @@ With This
     Call .TestPiece.Rotate(Sign) ' CCW: Sign = 1, CW: Sign = -1
     If IsPieceValid(.TestPiece) Then
         Let Rotate = True
-        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+        If AcceptOnSuccess Then _
+            Call ReplacePiece(.FallingPiece, .TestPiece, DrawOnSuccess)
 '    ElseIf Kick() Then
 '        Let Rotate = True
 '        Let Message = "Wall kick"
@@ -720,7 +770,8 @@ With This
             If IsPieceValid(.TestPiece) Then
                 Let Rotate = True
                 Let Message = "Wall kick"
-                If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
+                If AcceptOnSuccess Then _
+                    Call ReplacePiece(.FallingPiece, .TestPiece, DrawOnSuccess)
                 Exit For
             End If
         Next Test
