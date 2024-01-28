@@ -1,7 +1,8 @@
 Attribute VB_Name = "Main"
 Option Explicit
 '=============================================================================80
-' Tetris
+' For buttons
+'
 ' Author: Yi-Ping Huang
 ' https://github.com/yipinghuang1991/VBA-Tetris
 '=============================================================================80

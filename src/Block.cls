@@ -9,7 +9,12 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 '=============================================================================80
-' Tetris
+' A block is either
+' (1) The building blocks of Tetrominos
+'     In this case, the (x, y) is relative to the center of the Tetromino
+' (2) The grounded blocks
+'     In this case, the (x, y) is the position on the board
+'
 ' Author: Yi-Ping Huang
 ' https://github.com/yipinghuang1991/VBA-Tetris
 '=============================================================================80

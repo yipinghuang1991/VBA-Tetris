@@ -24,6 +24,7 @@ Feedbacks are welcome!
 8. Press Control or Z to rotate counterclockwise
 9. Press Shift or C to hold piece
 10. Press ESC to end game
+11. Press 1 to spawn I, 2 to spawn Z, 3 to spawn O, 4 to spawn T, 5 to spawn S, 6 to spawn L, 7 to spawn J. (Not numpad keys) The falling piece will be discarded.
 
 # What's Working
 * Hold piece
@@ -38,7 +39,7 @@ Feedbacks are welcome!
 * Add setting panel
 * Add custom keybinding
 * Add ghost piece
-* Gerenal performance improvement
+* General performance improvement
 * Try to follow the [Tetris Guideline](https://tetris.fandom.com/wiki/Tetris_Guideline)
 
 # Download

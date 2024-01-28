@@ -9,7 +9,9 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 '=============================================================================80
-' Tetris
+' This is a wrapper for the actual cell range object of Excel worksheet.
+' It's purpose is to determine if the cell should have change color.
+'
 ' Author: Yi-Ping Huang
 ' https://github.com/yipinghuang1991/VBA-Tetris
 '=============================================================================80

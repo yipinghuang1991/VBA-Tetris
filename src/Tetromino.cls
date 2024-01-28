@@ -9,10 +9,12 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 Option Explicit
 '=============================================================================80
-' Tetris
+' The Tetromino class holds the shape, color and stance of the piece,
+' its center position, and the blocks that compose the piece.
+'
 ' Author: Yi-Ping Huang
 ' https://github.com/yipinghuang1991/VBA-Tetris
-'=============================================================================80
+'-----------------------------------------------------------------------------80
 ' In my implementation, top left most cell of the board has coordinate (1, 1).
 ' +X direction is pointing downwards, +Y direction is pointing right.
 ' That is, the board has coordinate just like a matrix in the mathematical sense.

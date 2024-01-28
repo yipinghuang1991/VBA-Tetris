@@ -46,6 +46,7 @@ Private Type Variable
     Board As Range
     Matrix() As Cell
     FirstNonEmptyRow As Long
+    Gravity As Boolean
     ' Object
     ChangedCells As Dictionary
     ' Next
@@ -169,11 +170,21 @@ End Property
 Private Property Let Message(ByVal str As String)
     Let This.Worksheet.Range("U24").Value2 = str
 End Property
+'-----------------------------------------------------------------------------80
+Public Property Let Gravity(ByVal bool As Boolean)
+    Let This.Gravity = bool
+    
+'    If This.Gravity Then
+'        Let Message = "Gravity On"
+'    Else
+'        Let Message = "Gravity Off"
+'    End If
+End Property
 '=============================================================================80
 ' Read-Write Property
 '=============================================================================80
 Public Property Get GameState() As Long
-    Let GameState = Self.GameState
+    Let GameState = This.GameState
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Let GameState(ByVal GameState As Long)
@@ -254,6 +265,7 @@ With This
     Let .KickTable = GetKickTable
     Let Level = 1
     Let GameState = 1
+    Let .Gravity = True
     Let Score = 0
     Let .FirstNonEmptyRow = .Height
     Call SpawnIncoming(True, True)
@@ -273,7 +285,7 @@ Private Sub GameLoop()
         If .GameState > 0 Then
             Let Time = 1000 * Timer()
             If Time - LastMoveDownTime >= .PieceStayTime Then
-                Call Translate(1, 0, True, True)
+                If .Gravity Then Call Translate(1, 0, True, True)
                 Let LastMoveDownTime = Time
             Else
                 Select Case True 'KeyCodeConstants
@@ -359,6 +371,47 @@ Private Sub GameLoop()
                                 Call SoftDrop
                             End If
                         End If
+                    End If
+                ' Spawn
+                Case GetAsyncKeyState(vbKey1) And &H8000
+                    If .LastPressedKey <> vbKey1 Then
+                        Let .LastPressedKey = vbKey1
+                        Call ForceSpawn(IShape)
+                    End If
+                Case GetAsyncKeyState(vbKey2) And &H8000
+                    If .LastPressedKey <> vbKey2 Then
+                        Let .LastPressedKey = vbKey2
+                        Call ForceSpawn(ZShape)
+                    End If
+                Case GetAsyncKeyState(vbKey3) And &H8000
+                    If .LastPressedKey <> vbKey3 Then
+                        Let .LastPressedKey = vbKey3
+                        Call ForceSpawn(OShape)
+                    End If
+                Case GetAsyncKeyState(vbKey4) And &H8000
+                    If .LastPressedKey <> vbKey4 Then
+                        Let .LastPressedKey = vbKey4
+                        Call ForceSpawn(TShape)
+                    End If
+                Case GetAsyncKeyState(vbKey5) And &H8000
+                    If .LastPressedKey <> vbKey5 Then
+                        Let .LastPressedKey = vbKey5
+                        Call ForceSpawn(SShape)
+                    End If
+                Case GetAsyncKeyState(vbKey6) And &H8000
+                    If .LastPressedKey <> vbKey6 Then
+                        Let .LastPressedKey = vbKey6
+                        Call ForceSpawn(LShape)
+                    End If
+                Case GetAsyncKeyState(vbKey7) And &H8000
+                    If .LastPressedKey <> vbKey7 Then
+                        Let .LastPressedKey = vbKey7
+                        Call ForceSpawn(JShape)
+                    End If
+                Case GetAsyncKeyState(vbKeyG) And &H8000
+                    If .LastPressedKey <> vbKeyG Then
+                        Let .LastPressedKey = vbKeyG
+                        Let .Gravity = Not .Gravity
                     End If
                 ' Pause
                 Case GetAsyncKeyState(vbKeyP) And &H8000
@@ -527,6 +580,16 @@ Public Sub Spawn(Optional ByVal Shape As TetrominoShape)
 With This
     If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call UnlinkPiece(.FallingPiece)
     If Shape <> 0 Then Let .FallingShape = Shape
+    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
+    Call LinkPiece(.FallingPiece)
+    Call DrawChanged
+End With
+End Sub
+'-----------------------------------------------------------------------------80
+Public Sub ForceSpawn(ByVal Shape As TetrominoShape)
+With This
+    Call UnlinkPiece(.FallingPiece)
+    Let .FallingShape = Shape
     Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     Call LinkPiece(.FallingPiece)
     Call DrawChanged
