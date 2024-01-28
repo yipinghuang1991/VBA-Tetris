@@ -23,7 +23,6 @@ Private Type Variable
     BackgroundColor As Long
     Range As Range
     Block As Block
-    HasChanged As Boolean
 End Type
 '-----------------------------------------------------------------------------80
 Private This As Variable
@@ -33,7 +32,6 @@ Private This As Variable
 Private Sub Class_Initialize()
 With This
     Let .State = -1
-    Let .HasChanged = True
 End With
 End Sub
 '=============================================================================80
@@ -80,17 +78,11 @@ With This
     End Select
     
     Set .Block = Block
-    Let .HasChanged = True
 End With
 End Property
 '=============================================================================80
 ' Method
 '=============================================================================80
 Public Sub Draw()
-With This
-    If .HasChanged Then
-        Let .Range.Interior.Color = Color
-        Let .HasChanged = False
-    End If
-End With
+    Let This.Range.Interior.Color = Color
 End Sub
