@@ -898,9 +898,10 @@ End Function
 Private Sub ClearLines()
 With This
     Dim x As Long, y As Long, i As Long
-    Dim Lines As Collection: Set Lines = New Collection
+    Dim LineCount As Long, RowOfFirstLine As Long
     Dim MoveRow() As Long: ReDim MoveRow(.FirstNonEmptyRow To .Height)
-    ' Determine the mapping MoveRow: SourceRow |-> TargetRow, where SourceRow has at least one block
+    ' Determine the mapping MoveRow: SourceRow |-> TargetRow or 0,
+    ' where SourceRow has at least one block and is not a line
     For x = .Height To .FirstNonEmptyRow Step -1
         For y = 1 To .Width
             If .Matrix(x, y).State <> 0 Then Exit For
@@ -911,17 +912,17 @@ With This
                 Let MoveRow(i) = 1 + MoveRow(i)
             Next i
             
-            Call Lines.Add(x)
+            If RowOfFirstLine = 0 Then Let RowOfFirstLine = x
+            Let LineCount = 1 + LineCount
             Let MoveRow(x) = 0
+        Else
+            Let MoveRow(x) = x + MoveRow(x)
         End If
-        
-        Let MoveRow(x) = x + MoveRow(x)
     Next x
     
-    If Lines.Count Then
+    If LineCount <> 0 Then
         ' Move rows down
-        For x = Lines(1) - 1 To .FirstNonEmptyRow Step -1
-            'If MoveRow(X) <> 0 Then Call MoveRowToRow(X, MoveRow(X))
+          For x = RowOfFirstLine - 1 To .FirstNonEmptyRow Step -1
             If MoveRow(x) <> 0 Then
                 For y = 1 To .Width
                     With .Matrix(MoveRow(x), y)
@@ -934,8 +935,7 @@ With This
             End If
         Next x
         ' Clear rows
-        For x = .FirstNonEmptyRow To -1 + Lines.Count + .FirstNonEmptyRow
-            'Call DeleteRow(X)
+        For x = .FirstNonEmptyRow To -1 + LineCount + .FirstNonEmptyRow
             For y = 1 To .Width
                 With .Matrix(x, y)
                     If .State = 0 Then
@@ -946,10 +946,10 @@ With This
             Next y
         Next x
         
-        Let .FirstNonEmptyRow = Lines.Count + .FirstNonEmptyRow
-        Let LinesCleared = Lines.Count + .LinesCleared
-        Let Score = 100 * Choose(Lines.Count, 1, 3, 5, 8) * .Level + .Score
-        Let Message = Choose(Lines.Count, "Single", "Double", "Triple", "Tetris!")
+        Let LinesCleared = LineCount + .LinesCleared
+        Let .FirstNonEmptyRow = LineCount + .FirstNonEmptyRow
+        Let Score = 100 * Choose(LineCount, 1, 3, 5, 8) * .Level + .Score
+        Let Message = Choose(LineCount, "Single", "Double", "Triple", "Tetris!")
     End If
 End With
 End Sub
