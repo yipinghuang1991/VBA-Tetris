@@ -59,7 +59,6 @@ Private Type Variable
     ' Piece
     FallingShape As TetrominoShape
     FallingPiece As Tetromino
-    TestPiece As Tetromino
     GhostPiece As Tetromino
     ' Level
     Level As Long
@@ -582,9 +581,10 @@ End Sub
 Private Function SpawnIncoming(Optional ByVal AcceptOnSuccess As Boolean, _
                                Optional ByVal DrawOnSuccess As Boolean) As Boolean
 With This
-    Set .TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
+    Dim TestPiece As Tetromino
+    Set TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     
-    If IsPieceValid(.TestPiece) Then
+    If IsPieceValid(TestPiece) Then
         Let SpawnIncoming = True
         If AcceptOnSuccess Then
             Let .FallingShape = .IncomingShapes(1)
@@ -655,12 +655,14 @@ Private Function Translate(ByVal x As Long, ByVal y As Long, _
                            Optional ByVal AcceptOnSuccess As Boolean, _
                            Optional ByVal DrawOnSuccess As Boolean) As Boolean
 With This
-    Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Translate(x, y)
-    If IsPieceValid(.TestPiece) Then
+    Dim TestPiece As Tetromino: Set TestPiece = .FallingPiece.Copy
+    
+    Call TestPiece.Translate(x, y)
+    
+    If IsPieceValid(TestPiece) Then
         Let Translate = True
         If AcceptOnSuccess Then _
-            Call ReplacePiece(.FallingPiece, .TestPiece, DrawOnSuccess)
+            Call ReplacePiece(.FallingPiece, TestPiece, DrawOnSuccess)
     ElseIf x = 1 Then
         Call Ground
     End If
@@ -674,15 +676,15 @@ End Sub
 Private Sub HardDrop()
 With This
     Dim x As Long
-    Set .TestPiece = .FallingPiece.Copy
+    Dim TestPiece As Tetromino: Set TestPiece = .FallingPiece.Copy
     
     Do
         Let x = 1 + x
-        Call .TestPiece.Translate(1, 0)
-    Loop While IsPieceValid(.TestPiece)
+        Call TestPiece.Translate(1, 0)
+    Loop While IsPieceValid(TestPiece)
     
-    Call .TestPiece.Translate(-1, 0)
-    Call ReplacePiece(.FallingPiece, .TestPiece, True)
+    Call TestPiece.Translate(-1, 0)
+    Call ReplacePiece(.FallingPiece, TestPiece, True)
     Call Ground
     Let Score = 2 * (x - 1) + .Score
 End With
@@ -730,22 +732,24 @@ Private Function Rotate(ByVal Sign As Long, _
                         Optional ByVal AcceptOnSuccess As Boolean, _
                         Optional ByVal DrawOnSuccess As Boolean) As Boolean
 With This
-    Set .TestPiece = .FallingPiece.Copy
-    Call .TestPiece.Rotate(Sign) ' CCW: Sign = 1, CW: Sign = -1
-    If IsPieceValid(.TestPiece) Then
+    Dim TestPiece As Tetromino: Set TestPiece = .FallingPiece.Copy
+    
+    Call TestPiece.Rotate(Sign) ' CCW: Sign = 1, CW: Sign = -1
+    
+    If IsPieceValid(TestPiece) Then
         Let Rotate = True
         If AcceptOnSuccess Then _
-            Call ReplacePiece(.FallingPiece, .TestPiece, DrawOnSuccess)
+            Call ReplacePiece(.FallingPiece, TestPiece, DrawOnSuccess)
     Else ' Kick
         Dim Test As Variant
-        For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, .TestPiece.Stance)
-            Call .TestPiece.Translate(Test(0), Test(1))
+        For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, TestPiece.Stance)
+            Call TestPiece.Translate(Test(0), Test(1))
             
-            If IsPieceValid(.TestPiece) Then
+            If IsPieceValid(TestPiece) Then
                 Let Rotate = True
                 Let Message = "Wall kick"
                 If AcceptOnSuccess Then _
-                    Call ReplacePiece(.FallingPiece, .TestPiece, DrawOnSuccess)
+                    Call ReplacePiece(.FallingPiece, TestPiece, DrawOnSuccess)
                 Exit For
             End If
         Next Test
