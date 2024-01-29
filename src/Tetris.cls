@@ -555,28 +555,6 @@ With This
 End With
 End Sub
 '-----------------------------------------------------------------------------80
-Private Sub LinkPiece(ByRef Piece As Tetromino)
-With This
-    Dim B As Variant
-    For Each B In Piece.Blocks
-        Set .Matrix(B.x, B.y).Block = B
-        Call AddChangedCell(.Matrix(B.x, B.y))
-    Next B
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Sub UnlinkPiece(ByRef Piece As Tetromino)
-With This
-    If Not Piece Is Nothing Then
-        Dim B As Variant
-        For Each B In Piece.Blocks
-            Set .Matrix(B.x, B.y).Block = Nothing
-            Call AddChangedCell(.Matrix(B.x, B.y))
-        Next B
-    End If
-End With
-End Sub
-'-----------------------------------------------------------------------------80
 Private Function IsPieceValid(ByRef Piece As Tetromino) As Boolean
 With This
     Let IsPieceValid = True
@@ -758,10 +736,6 @@ With This
         Let Rotate = True
         If AcceptOnSuccess Then _
             Call ReplacePiece(.FallingPiece, .TestPiece, DrawOnSuccess)
-'    ElseIf Kick() Then
-'        Let Rotate = True
-'        Let Message = "Wall kick"
-'        If AcceptOnSuccess Then Call AcceptTestPiece(DrawOnSuccess)
     Else ' Kick
         Dim Test As Variant
         For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, .TestPiece.Stance)
@@ -778,20 +752,6 @@ With This
     End If
 End With
 End Function
-'-----------------------------------------------------------------------------80
-'Private Function Kick() As Boolean
-'With This
-'    Dim Test As Variant
-'    For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, .TestPiece.Stance)
-'        Call .TestPiece.Translate(Test(0), Test(1))
-'
-'        If IsPieceValid(.TestPiece) Then
-'            Let Kick = True
-'            Exit For
-'        End If
-'    Next Test
-'End With
-'End Function
 '-----------------------------------------------------------------------------80
 Private Function GetKickTable() As Variant
     Dim KickTable As Variant: ReDim KickTable(1 To 7, 0 To 3, 0 To 3)
@@ -953,35 +913,6 @@ With This
     End If
 End With
 End Sub
-'-----------------------------------------------------------------------------80
-'Private Sub MoveRowToRow(ByVal X As Long, ByVal ToX As Long)
-'With This
-'    Dim Y As Long
-'    For Y = 1 To .Width
-'        With This.Matrix(X, Y).Matrix(ToX, Y)
-'            If .Color <> C.Color Then
-'                Set .Block = This.Matrix(X, Y).Block
-'                'If .State = 0 Then Let .Block.X = ToX
-'                Call AddChangedCell(.Self)
-'            End If
-'        End With
-'    Next Y
-'End With
-'End Sub
-'-----------------------------------------------------------------------------80
-'Private Sub DeleteRow(ByVal X As Long)
-'With This
-'    Dim Y As Long
-'    For Y = 1 To .Width
-'        With .Matrix(X, Y)
-'            If .State = 0 Then
-'                Set .Block = Nothing
-'                Call AddChangedCell(.Self)
-'            End If
-'        End With
-'    Next Y
-'End With
-'End Sub
 '=============================================================================80
 ' Helper Function
 '=============================================================================80
