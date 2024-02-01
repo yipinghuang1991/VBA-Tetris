@@ -90,8 +90,8 @@ Private Sub Class_Initialize()
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Class_Terminate()
-    'Call This.Worksheet.Unprotect
     Let StartButtonText = "S T A R T"
+    Call This.Worksheet.Unprotect
     Call SpeedUp(False)
 End Sub
 '=============================================================================80
@@ -310,7 +310,7 @@ Private Sub GameLoop()
     DoEvents
     
     If .GameState = 0 Then ' If paused
-        If GetAsyncKeyState(vbKeyR) And &H8000 Then Let GameState = 2
+        If &H8000 And GetAsyncKeyState(vbKeyR) Then Let GameState = 2
     Else ' .GameState > 0
         Let Time = 1000 * Timer()
         
@@ -352,46 +352,46 @@ Private Sub GameLoop()
             Select Case True 'KeyCodeConstants
            '| Decrease indentation level
             ' Space to hard drop.
-            Case GetAsyncKeyState(vbKeySpace) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeySpace)
                 If .LastPressedKey <> vbKeySpace Then
                     Let .LastPressedKey = vbKeySpace
                     Call HardDropKey_Pressed
                 End If
             ' Shift and C are to hold.
-            Case GetAsyncKeyState(vbKeyShift) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyShift)
                 If .LastPressedKey <> vbKeyShift Then
                     Let .LastPressedKey = vbKeyShift
                     Call HoldKey_Pressed
                 End If
-            Case GetAsyncKeyState(vbKeyC) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyC)
                 If .LastPressedKey <> vbKeyC Then
                     Let .LastPressedKey = vbKeyC
                     Call HoldKey_Pressed
                 End If
             ' Up arrow and X are to rotate clockwise.
-            Case GetAsyncKeyState(vbKeyUp) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyUp)
                 If .LastPressedKey <> vbKeyUp Then
                     Let .LastPressedKey = vbKeyUp
                     Call RotateKey_Pressed(-1)
                 End If
-            Case GetAsyncKeyState(vbKeyX) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyX)
                 If .LastPressedKey <> vbKeyX Then
                     Let .LastPressedKey = vbKeyX
                     Call RotateKey_Pressed(-1)
                 End If
             ' Ctrl and Z are to rotate counterclockwise.
-            Case GetAsyncKeyState(vbKeyControl) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyControl)
                 If .LastPressedKey <> vbKeyControl Then
                     Let .LastPressedKey = vbKeyControl
                     Call RotateKey_Pressed(1)
                 End If
-            Case GetAsyncKeyState(vbKeyZ) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyZ)
                 If .LastPressedKey <> vbKeyZ Then
                     Let .LastPressedKey = vbKeyZ
                     Call RotateKey_Pressed(1)
                 End If
             ' Left, right, and down arrows are the same as on the console.
-            Case GetAsyncKeyState(vbKeyLeft) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyLeft)
                 If .LastPressedKey <> vbKeyLeft Then
                     Let LastKeyPressedTime = 1000 * Timer()
                     Let .LastPressedKey = vbKeyLeft
@@ -405,7 +405,7 @@ Private Sub GameLoop()
                         End If
                     End If
                 End If
-            Case GetAsyncKeyState(vbKeyRight) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyRight)
                 If .LastPressedKey <> vbKeyRight Then
                     Let LastKeyPressedTime = 1000 * Timer()
                     Let .LastPressedKey = vbKeyRight
@@ -419,7 +419,7 @@ Private Sub GameLoop()
                         End If
                     End If
                 End If
-            Case GetAsyncKeyState(vbKeyDown) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyDown)
                 If .LastPressedKey <> vbKeyDown Then
                     Let LastKeyPressedTime = 1000 * Timer()
                     Let .LastPressedKey = vbKeyDown
@@ -434,51 +434,51 @@ Private Sub GameLoop()
                     End If
                 End If
             ' Spawn
-            Case GetAsyncKeyState(vbKey1) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKey1)
                 If .LastPressedKey <> vbKey1 Then
                     Let .LastPressedKey = vbKey1
                     Let .OverrideShape = IShape
                 End If
-            Case GetAsyncKeyState(vbKey2) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKey2)
                 If .LastPressedKey <> vbKey2 Then
                     Let .LastPressedKey = vbKey2
                     Let .OverrideShape = ZShape
                 End If
-            Case GetAsyncKeyState(vbKey3) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKey3)
                 If .LastPressedKey <> vbKey3 Then
                     Let .LastPressedKey = vbKey3
                     Let .OverrideShape = OShape
                 End If
-            Case GetAsyncKeyState(vbKey4) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKey4)
                 If .LastPressedKey <> vbKey4 Then
                     Let .LastPressedKey = vbKey4
                     Let .OverrideShape = TShape
                 End If
-            Case GetAsyncKeyState(vbKey5) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKey5)
                 If .LastPressedKey <> vbKey5 Then
                     Let .LastPressedKey = vbKey5
                     Let .OverrideShape = SShape
                 End If
-            Case GetAsyncKeyState(vbKey6) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKey6)
                 If .LastPressedKey <> vbKey6 Then
                     Let .LastPressedKey = vbKey6
                     Let .OverrideShape = LShape
                 End If
-            Case GetAsyncKeyState(vbKey7) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKey7)
                 If .LastPressedKey <> vbKey7 Then
                     Let .LastPressedKey = vbKey7
                     Let .OverrideShape = JShape
                 End If
-            Case GetAsyncKeyState(vbKeyG) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyG)
                 If .LastPressedKey <> vbKeyG Then
                     Let .LastPressedKey = vbKeyG
                     Let .Gravity = Not .Gravity
                 End If
             ' Pause
-            Case GetAsyncKeyState(vbKeyP) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyP)
                 Let GameState = 0
             ' End
-            Case GetAsyncKeyState(vbKeyEscape) And &H8000
+            Case &H8000 And GetAsyncKeyState(vbKeyEscape)
                 Let GameState = -2
             Case Else
                 If .LastPressedKey <> 0 Then Let .LastPressedKey = 0
