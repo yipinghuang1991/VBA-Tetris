@@ -15,7 +15,7 @@ Private Game As Tetris
 '=============================================================================80
 Public Sub StartButton_Click()
     If Game Is Nothing Then
-        Set Game = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "I8")
+        Set Game = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "K8")
         Call Game.Start
         Set Game = Nothing
     ElseIf Game.GameState > 0 Then
@@ -28,8 +28,8 @@ End Sub
 Public Sub StopButton_Click()
     If Game Is Nothing Then
         With ThisWorkbook.Worksheets("Tetris")
-            Let .Range("U24").Value2 = "Not Started"
-            Let .Range("U26").Value2 = "S T A R T"
+            Let .Range("B29").Value2 = "Not Started"
+            Let .Range("B2").Value2 = "S T A R T"
         End With
     Else
         Let Game.GameState = -2

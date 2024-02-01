@@ -63,6 +63,7 @@ Private Type Variable
     GhostPiece As Tetromino
     ' Level
     Level As Long
+    TotalLinesCleared As Long
     LinesCleared As Long
     LinesToLevelUp As Long
     Score As Long
@@ -135,16 +136,27 @@ With This
     Dim LinesToLevelUpPrev As Long: Let LinesToLevelUpPrev = IIf(.Level > 1, .LinesToLevelUp, 0)
     Let LinesToLevelUp = 10 * LevelCap
     Let LinesCleared = .LinesCleared - LinesToLevelUpPrev
-    Let .Worksheet.Range("V15").Resize(, 3).Value2 = Array(.Level \ 100, _
+    Let .Worksheet.Range("F25").Resize(, 3).Value2 = Array(.Level \ 100, _
                                                            .Level \ 10 Mod 10, _
                                                            .Level Mod 10)
+End With
+End Property
+'-----------------------------------------------------------------------------80
+Private Property Let TotalLinesCleared(ByVal Lines As Long)
+With This
+    Let .TotalLinesCleared = Lines
+    Let .Worksheet.Range("D22").Resize(, 5).Value2 = Array(.TotalLinesCleared \ 10000 Mod 10, _
+                                                           .TotalLinesCleared \ 1000 Mod 10, _
+                                                           .TotalLinesCleared \ 100 Mod 10, _
+                                                           .TotalLinesCleared \ 10 Mod 10, _
+                                                           .TotalLinesCleared Mod 10)
 End With
 End Property
 '-----------------------------------------------------------------------------80
 Private Property Let LinesCleared(ByVal Lines As Long)
 With This
     Let .LinesCleared = Lines
-    Let .Worksheet.Range("U18").Resize(, 3).Value2 = Array(.LinesCleared \ 100, _
+    Let .Worksheet.Range("F18").Resize(, 3).Value2 = Array(.LinesCleared \ 100, _
                                                            .LinesCleared \ 10 Mod 10, _
                                                            .LinesCleared Mod 10)
     If .LinesCleared >= .LinesToLevelUp Then Let Level = 1 + .Level
@@ -154,7 +166,7 @@ End Property
 Private Property Let LinesToLevelUp(ByVal Lines As Long)
 With This
     Let .LinesToLevelUp = Lines
-    Let .Worksheet.Range("Y18").Resize(, 3).Value2 = Array(.LinesToLevelUp \ 100, _
+    Let .Worksheet.Range("F20").Resize(, 3).Value2 = Array(.LinesToLevelUp \ 100, _
                                                            .LinesToLevelUp \ 10 Mod 10, _
                                                            .LinesToLevelUp Mod 10)
 End With
@@ -163,7 +175,7 @@ End Property
 Private Property Let Score(ByVal Score As Long)
 With This
     Let .Score = Score
-    Let .Worksheet.Range("U21").Resize(, 7).Value2 = Array(.Score \ 1000000, _
+    Let .Worksheet.Range("B27").Resize(, 7).Value2 = Array(.Score \ 1000000, _
                                                            .Score \ 100000 Mod 10, _
                                                            .Score \ 10000 Mod 10, _
                                                            .Score \ 1000 Mod 10, _
@@ -174,7 +186,7 @@ End With
 End Property
 '-----------------------------------------------------------------------------80
 Private Property Let Message(ByVal str As String)
-    Let This.Worksheet.Range("U24").Value2 = str
+    Let This.Worksheet.Range("B29").Value2 = str
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Let Gravity(ByVal bool As Boolean)
@@ -188,7 +200,7 @@ Public Property Let Gravity(ByVal bool As Boolean)
 End Property
 '-----------------------------------------------------------------------------80
 Private Property Let StartButtonText(ByVal text As String)
-    Let This.Worksheet.Range("U26").Value2 = text
+    Let This.Worksheet.Range("B2").Value2 = text
 End Property
 '=============================================================================80
 ' Read-Write Property
@@ -238,14 +250,14 @@ With This
     With .Worksheet
         Call .Unprotect
         Call .Range("A1").Select
-        Let .Range("A1:AB31").RowHeight = RowHeight
-        Let .Range("A1:AB31").ColumnWidth = ColumnWidth
+        Let .Range("A1:AD31").RowHeight = RowHeight
+        Let .Range("A1:AD31").ColumnWidth = ColumnWidth
         ' Make the adjacent row and column largest so as to draw less thing on the screen
-        Let .Range("AC:AC").ColumnWidth = 255
+        Let .Range("AE:AE").ColumnWidth = 255
         Let .Range("32:32").RowHeight = 409
         ' Make the adjacent row and column black
-        Let .Range("AC1:AC32").Interior.ColorIndex = 1
-        Let .Range("A32:AB32").Interior.ColorIndex = 1
+        Let .Range("AE1:AE32").Interior.ColorIndex = 1
+        Let .Range("A32:AE32").Interior.ColorIndex = 1
         ' Hide the top two rows according to guideline
         Let .Range("8:9").EntireRow.Hidden = True
         Call .Protect(, True, True, True, , True)
@@ -254,15 +266,15 @@ With This
     If Not .IsShowcase Then
         Set .IncomingShapes = New Collection
         Call AddBag
-        Set .Held = Tetris.GetTetris(.Worksheet, "U11", 2, 4, True)
+        Set .Held = Tetris.GetTetris(.Worksheet, "D12", 2, 4, True)
         ReDim .Nexts(1 To 6)
         
-        Set .Nexts(1) = Tetris.GetTetris(.Worksheet, "C11", 2, 4, True)
-        Set .Nexts(2) = Tetris.GetTetris(.Worksheet, "C14", 2, 4, True)
-        Set .Nexts(3) = Tetris.GetTetris(.Worksheet, "C17", 2, 4, True)
-        Set .Nexts(4) = Tetris.GetTetris(.Worksheet, "C20", 2, 4, True)
-        Set .Nexts(5) = Tetris.GetTetris(.Worksheet, "C23", 2, 4, True)
-        Set .Nexts(6) = Tetris.GetTetris(.Worksheet, "C26", 2, 4, True)
+        Set .Nexts(1) = Tetris.GetTetris(.Worksheet, "X12", 2, 4, True)
+        Set .Nexts(2) = Tetris.GetTetris(.Worksheet, "X15", 2, 4, True)
+        Set .Nexts(3) = Tetris.GetTetris(.Worksheet, "X18", 2, 4, True)
+        Set .Nexts(4) = Tetris.GetTetris(.Worksheet, "X21", 2, 4, True)
+        Set .Nexts(5) = Tetris.GetTetris(.Worksheet, "X24", 2, 4, True)
+        Set .Nexts(6) = Tetris.GetTetris(.Worksheet, "X27", 2, 4, True)
     End If
     
     ' Draw board, hold, and nexts
@@ -830,6 +842,7 @@ With This
         Let .DrawBoard = True
         Let .FirstNonEmptyRow = LineCount + .FirstNonEmptyRow
         Let LinesCleared = LineCount + .LinesCleared
+        Let TotalLinesCleared = LineCount + .TotalLinesCleared
         Let Score = 100 * Choose(LineCount, 1, 3, 5, 8) * .Level + .Score
         Let Message = Choose(LineCount, "Single", "Double", "Triple", "Tetris!")
     End If
