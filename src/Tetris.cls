@@ -57,6 +57,7 @@ Private Type Variable
     Held As Tetris
     IsHeld As Boolean
     ' Piece
+    OverrideShape As TetrominoShape
     FallingShape As TetrominoShape
     FallingPiece As Tetromino
     GhostPiece As Tetromino
@@ -71,6 +72,11 @@ Private Type Variable
     LastMoveDownTime As Long
     ' Kick
     KickTable As Variant
+    Ground As Boolean
+    Clear As Boolean
+    DrawBoard As Boolean
+    DrawHold As Boolean
+    DrawNexts As Boolean
 End Type
 '-----------------------------------------------------------------------------80
 Private This As Variable
@@ -265,170 +271,201 @@ With This
     Let Level = 1
     Let GameState = 1
     Let .Gravity = True
-    Let Score = 0
     Let .FirstNonEmptyRow = .Height
-    Call SpawnIncoming(True, True)
     Call GameLoop
 End With
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub GameLoop()
-    'On Error GoTo Err
+    On Error GoTo Err
     
     Dim Time As Long, LastRepeatTime As Long, LastKeyPressedTime As Long
     Dim LastMoveDownTime As Long: Let LastMoveDownTime = 1000 * Timer()
     ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
     With This
    '| Decrease indentation level
-    Do While .GameState >= 0
-        If .GameState > 0 Then
-            Let Time = 1000 * Timer()
-            If Time - LastMoveDownTime >= .PieceStayTime Then
-                If .Gravity Then Call Translate(1, 0, True, True)
-                Let LastMoveDownTime = Time
-            Else
-                Select Case True 'KeyCodeConstants
-               '| Decrease indentation level
-                ' Space to hard drop.
-                Case GetAsyncKeyState(vbKeySpace) And &H8000
-                    If .LastPressedKey <> vbKeySpace Then
-                        Let .LastPressedKey = vbKeySpace
-                        Call HardDrop
-                    End If
-                ' Shift and C are to hold.
-                Case GetAsyncKeyState(vbKeyShift) And &H8000
-                    If .LastPressedKey <> vbKeyShift Then
-                        Let .LastPressedKey = vbKeyShift
-                        Call Hold
-                    End If
-                Case GetAsyncKeyState(vbKeyC) And &H8000
-                    If .LastPressedKey <> vbKeyC Then
-                        Let .LastPressedKey = vbKeyC
-                        Call Hold
-                    End If
-                ' Up arrow and X are to rotate clockwise.
-                Case GetAsyncKeyState(vbKeyUp) And &H8000
-                    If .LastPressedKey <> vbKeyUp Then
-                        Let .LastPressedKey = vbKeyUp
-                        Call Rotate(-1, True, True)
-                    End If
-                Case GetAsyncKeyState(vbKeyX) And &H8000
-                    If .LastPressedKey <> vbKeyX Then
-                        Let .LastPressedKey = vbKeyX
-                        Call Rotate(-1, True, True)
-                    End If
-                ' Ctrl and Z are to rotate counterclockwise.
-                Case GetAsyncKeyState(vbKeyControl) And &H8000
-                    If .LastPressedKey <> vbKeyControl Then
-                        Let .LastPressedKey = vbKeyControl
-                        Call Rotate(1, True, True)
-                    End If
-                Case GetAsyncKeyState(vbKeyZ) And &H8000
-                    If .LastPressedKey <> vbKeyZ Then
-                        Let .LastPressedKey = vbKeyZ
-                        Call Rotate(1, True, True)
-                    End If
-                ' Left, right, and down arrows are the same as on the console.
-                Case GetAsyncKeyState(vbKeyLeft) And &H8000
-                    If .LastPressedKey <> vbKeyLeft Then
-                        Let LastKeyPressedTime = 1000 * Timer()
-                        Let .LastPressedKey = vbKeyLeft
-                        Call Translate(0, -1, True, True)
-                    Else
-                        Let Time = 1000 * Timer()
-                        If Time - LastKeyPressedTime >= RepeatDelay Then
-                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
-                                Let LastRepeatTime = Time
-                                Call Translate(0, -1, True, True)
-                            End If
-                        End If
-                    End If
-                Case GetAsyncKeyState(vbKeyRight) And &H8000
-                    If .LastPressedKey <> vbKeyRight Then
-                        Let LastKeyPressedTime = 1000 * Timer()
-                        Let .LastPressedKey = vbKeyRight
-                        Call Translate(0, 1, True, True)
-                    Else
-                        Let Time = 1000 * Timer()
-                        If Time - LastKeyPressedTime >= RepeatDelay Then
-                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
-                                Let LastRepeatTime = Time
-                                Call Translate(0, 1, True, True)
-                            End If
-                        End If
-                    End If
-                Case GetAsyncKeyState(vbKeyDown) And &H8000
-                    If .LastPressedKey <> vbKeyDown Then
-                        Let LastKeyPressedTime = 1000 * Timer()
-                        Let .LastPressedKey = vbKeyDown
-                        Call SoftDrop
-                    Else
-                        Let Time = 1000 * Timer()
-                        If Time - LastKeyPressedTime >= RepeatDelay Then
-                            If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
-                                Let LastRepeatTime = Time
-                                Call SoftDrop
-                            End If
-                        End If
-                    End If
-                ' Spawn
-                Case GetAsyncKeyState(vbKey1) And &H8000
-                    If .LastPressedKey <> vbKey1 Then
-                        Let .LastPressedKey = vbKey1
-                        Call ForceSpawn(IShape)
-                    End If
-                Case GetAsyncKeyState(vbKey2) And &H8000
-                    If .LastPressedKey <> vbKey2 Then
-                        Let .LastPressedKey = vbKey2
-                        Call ForceSpawn(ZShape)
-                    End If
-                Case GetAsyncKeyState(vbKey3) And &H8000
-                    If .LastPressedKey <> vbKey3 Then
-                        Let .LastPressedKey = vbKey3
-                        Call ForceSpawn(OShape)
-                    End If
-                Case GetAsyncKeyState(vbKey4) And &H8000
-                    If .LastPressedKey <> vbKey4 Then
-                        Let .LastPressedKey = vbKey4
-                        Call ForceSpawn(TShape)
-                    End If
-                Case GetAsyncKeyState(vbKey5) And &H8000
-                    If .LastPressedKey <> vbKey5 Then
-                        Let .LastPressedKey = vbKey5
-                        Call ForceSpawn(SShape)
-                    End If
-                Case GetAsyncKeyState(vbKey6) And &H8000
-                    If .LastPressedKey <> vbKey6 Then
-                        Let .LastPressedKey = vbKey6
-                        Call ForceSpawn(LShape)
-                    End If
-                Case GetAsyncKeyState(vbKey7) And &H8000
-                    If .LastPressedKey <> vbKey7 Then
-                        Let .LastPressedKey = vbKey7
-                        Call ForceSpawn(JShape)
-                    End If
-                Case GetAsyncKeyState(vbKeyG) And &H8000
-                    If .LastPressedKey <> vbKeyG Then
-                        Let .LastPressedKey = vbKeyG
-                        Let .Gravity = Not .Gravity
-                    End If
-                ' Pause
-                Case GetAsyncKeyState(vbKeyP) And &H8000
-                    Let GameState = 0
-                ' End
-                Case GetAsyncKeyState(vbKeyEscape) And &H8000
-                    Let GameState = -2
-                Case Else
-                    If .LastPressedKey <> 0 Then Let .LastPressedKey = 0
-               '| Decrease indentation level
-                End Select
-            End If
-        Else ' .GameState = 0
-            If GetAsyncKeyState(vbKeyR) And &H8000 Then _
-                Let GameState = 2
+    Do While .GameState >= 0 ' If active
+   '| Decrease indentation level
+    DoEvents
+    
+    If .GameState = 0 Then ' If paused
+        If GetAsyncKeyState(vbKeyR) And &H8000 Then Let GameState = 2
+    Else ' .GameState > 0
+        Let Time = 1000 * Timer()
+        
+        If .DrawBoard Then
+            Call DrawChanged
+            Let .DrawBoard = False
         End If
         
-        DoEvents
+        If .DrawNexts Then
+            Dim Tet As Variant
+            For Each Tet In .Nexts
+                Call Tet.DrawChanged
+            Next Tet
+            
+            Let .DrawNexts = False
+        End If
+            
+        If .DrawHold Then
+            Call .Held.DrawChanged
+            Let .DrawHold = False
+        End If
+        
+        If .Clear Then
+            Let .Clear = False
+            Call ClearLines
+        ElseIf .Ground Then
+            Let .Ground = False
+            Call Ground
+            Let .Clear = True
+        ElseIf .OverrideShape <> 0 Then
+            Call Spawn(.OverrideShape)
+            Let .OverrideShape = 0
+        ElseIf .FallingShape = 0 Then
+            Call SpawnNext
+        ElseIf Time - LastMoveDownTime >= .PieceStayTime Then
+            If .Gravity Then Call GravityDrop
+            Let LastMoveDownTime = Time
+        Else
+            Select Case True 'KeyCodeConstants
+           '| Decrease indentation level
+            ' Space to hard drop.
+            Case GetAsyncKeyState(vbKeySpace) And &H8000
+                If .LastPressedKey <> vbKeySpace Then
+                    Let .LastPressedKey = vbKeySpace
+                    Call HardDropKey_Pressed
+                End If
+            ' Shift and C are to hold.
+            Case GetAsyncKeyState(vbKeyShift) And &H8000
+                If .LastPressedKey <> vbKeyShift Then
+                    Let .LastPressedKey = vbKeyShift
+                    Call HoldKey_Pressed
+                End If
+            Case GetAsyncKeyState(vbKeyC) And &H8000
+                If .LastPressedKey <> vbKeyC Then
+                    Let .LastPressedKey = vbKeyC
+                    Call HoldKey_Pressed
+                End If
+            ' Up arrow and X are to rotate clockwise.
+            Case GetAsyncKeyState(vbKeyUp) And &H8000
+                If .LastPressedKey <> vbKeyUp Then
+                    Let .LastPressedKey = vbKeyUp
+                    Call RotateKey_Pressed(-1)
+                End If
+            Case GetAsyncKeyState(vbKeyX) And &H8000
+                If .LastPressedKey <> vbKeyX Then
+                    Let .LastPressedKey = vbKeyX
+                    Call RotateKey_Pressed(-1)
+                End If
+            ' Ctrl and Z are to rotate counterclockwise.
+            Case GetAsyncKeyState(vbKeyControl) And &H8000
+                If .LastPressedKey <> vbKeyControl Then
+                    Let .LastPressedKey = vbKeyControl
+                    Call RotateKey_Pressed(1)
+                End If
+            Case GetAsyncKeyState(vbKeyZ) And &H8000
+                If .LastPressedKey <> vbKeyZ Then
+                    Let .LastPressedKey = vbKeyZ
+                    Call RotateKey_Pressed(1)
+                End If
+            ' Left, right, and down arrows are the same as on the console.
+            Case GetAsyncKeyState(vbKeyLeft) And &H8000
+                If .LastPressedKey <> vbKeyLeft Then
+                    Let LastKeyPressedTime = 1000 * Timer()
+                    Let .LastPressedKey = vbKeyLeft
+                    Call MoveLeftKey_Pressed
+                Else
+                    Let Time = 1000 * Timer()
+                    If Time - LastKeyPressedTime >= RepeatDelay Then
+                        If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                            Let LastRepeatTime = Time
+                            Call MoveLeftKey_Pressed
+                        End If
+                    End If
+                End If
+            Case GetAsyncKeyState(vbKeyRight) And &H8000
+                If .LastPressedKey <> vbKeyRight Then
+                    Let LastKeyPressedTime = 1000 * Timer()
+                    Let .LastPressedKey = vbKeyRight
+                    Call MoveRightKey_Pressed
+                Else
+                    Let Time = 1000 * Timer()
+                    If Time - LastKeyPressedTime >= RepeatDelay Then
+                        If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                            Let LastRepeatTime = Time
+                            Call MoveRightKey_Pressed
+                        End If
+                    End If
+                End If
+            Case GetAsyncKeyState(vbKeyDown) And &H8000
+                If .LastPressedKey <> vbKeyDown Then
+                    Let LastKeyPressedTime = 1000 * Timer()
+                    Let .LastPressedKey = vbKeyDown
+                    Call SoftDropKey_Pressed
+                Else
+                    Let Time = 1000 * Timer()
+                    If Time - LastKeyPressedTime >= RepeatDelay Then
+                        If Time - LastRepeatTime >= ReciprocalOfRepeatRate Then
+                            Let LastRepeatTime = Time
+                            Call SoftDropKey_Pressed
+                        End If
+                    End If
+                End If
+            ' Spawn
+            Case GetAsyncKeyState(vbKey1) And &H8000
+                If .LastPressedKey <> vbKey1 Then
+                    Let .LastPressedKey = vbKey1
+                    Let .OverrideShape = IShape
+                End If
+            Case GetAsyncKeyState(vbKey2) And &H8000
+                If .LastPressedKey <> vbKey2 Then
+                    Let .LastPressedKey = vbKey2
+                    Let .OverrideShape = ZShape
+                End If
+            Case GetAsyncKeyState(vbKey3) And &H8000
+                If .LastPressedKey <> vbKey3 Then
+                    Let .LastPressedKey = vbKey3
+                    Let .OverrideShape = OShape
+                End If
+            Case GetAsyncKeyState(vbKey4) And &H8000
+                If .LastPressedKey <> vbKey4 Then
+                    Let .LastPressedKey = vbKey4
+                    Let .OverrideShape = TShape
+                End If
+            Case GetAsyncKeyState(vbKey5) And &H8000
+                If .LastPressedKey <> vbKey5 Then
+                    Let .LastPressedKey = vbKey5
+                    Let .OverrideShape = SShape
+                End If
+            Case GetAsyncKeyState(vbKey6) And &H8000
+                If .LastPressedKey <> vbKey6 Then
+                    Let .LastPressedKey = vbKey6
+                    Let .OverrideShape = LShape
+                End If
+            Case GetAsyncKeyState(vbKey7) And &H8000
+                If .LastPressedKey <> vbKey7 Then
+                    Let .LastPressedKey = vbKey7
+                    Let .OverrideShape = JShape
+                End If
+            Case GetAsyncKeyState(vbKeyG) And &H8000
+                If .LastPressedKey <> vbKeyG Then
+                    Let .LastPressedKey = vbKeyG
+                    Let .Gravity = Not .Gravity
+                End If
+            ' Pause
+            Case GetAsyncKeyState(vbKeyP) And &H8000
+                Let GameState = 0
+            ' End
+            Case GetAsyncKeyState(vbKeyEscape) And &H8000
+                Let GameState = -2
+            Case Else
+                If .LastPressedKey <> 0 Then Let .LastPressedKey = 0
+           '| Decrease indentation level
+            End Select
+        End If
+    End If
+   '| Decrease indentation level
     Loop
    '| Decrease indentation level
     End With
@@ -529,8 +566,7 @@ End Sub
 'End Sub
 '-----------------------------------------------------------------------------80
 Private Sub ReplacePiece(Optional ByRef PieceToUnlink As Tetromino, _
-                         Optional ByRef PieceToLink As Tetromino, _
-                         Optional ByVal Draw As Boolean)
+                         Optional ByRef PieceToLink As Tetromino)
 With This
     Dim B As Variant
     
@@ -549,8 +585,6 @@ With This
     End If
     
     Set PieceToUnlink = PieceToLink
-    
-    If Draw Then Call DrawChanged
 End With
 End Sub
 '-----------------------------------------------------------------------------80
@@ -578,141 +612,143 @@ Private Sub AddBag()
     Next v
 End Sub
 '-----------------------------------------------------------------------------80
-Private Function SpawnIncoming(Optional ByVal AcceptOnSuccess As Boolean, _
-                               Optional ByVal DrawOnSuccess As Boolean) As Boolean
+Private Sub SpawnNext()
+With This
+    If Spawn(.IncomingShapes(1)) Then
+        ' Dequeue
+        Let .FallingShape = .IncomingShapes(1)
+        Call .IncomingShapes.Remove(1)
+        If .IncomingShapes.Count = 6 Then Call AddBag
+        
+        Dim i As Long
+        For i = 1 To 6
+             Call .Nexts(i).Spawn(.IncomingShapes(i))
+        Next i
+        
+        Let .DrawNexts = True
+    End If
+End With
+End Sub
+'-----------------------------------------------------------------------------80
+Public Function Spawn(ByVal Shape As TetrominoShape) As Boolean
 With This
     Dim TestPiece As Tetromino
-    Set TestPiece = Tetromino.GetTetromino(.IncomingShapes(1), IIf(.IncomingShapes(1) = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
+    Set TestPiece = Tetromino.GetTetromino(Shape, IIf(Shape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     
     If IsPieceValid(TestPiece) Then
-        Let SpawnIncoming = True
-        If AcceptOnSuccess Then
-            Let .FallingShape = .IncomingShapes(1)
-            Call .IncomingShapes.Remove(1) ' Queue
-            If .IncomingShapes.Count = 6 Then Call AddBag
-        
-            Dim i As Long
-            For i = 1 To 6
-                Call .Nexts(i).Spawn(.IncomingShapes(i))
-            Next i
-            
-            Call Spawn
-        End If
+        Call ReplacePiece(.FallingPiece, TestPiece)
+        Let .DrawBoard = True
+        Let .FallingShape = Shape
+        Let Spawn = True
     Else
         Let GameState = -1
     End If
 End With
 End Function
 '-----------------------------------------------------------------------------80
-Public Sub Spawn(Optional ByVal Shape As TetrominoShape)
-With This
-    If .IsShowcase And (Not .FallingPiece Is Nothing) Then Call ReplacePiece(.FallingPiece)
-    If Shape <> 0 Then Let .FallingShape = Shape
-    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
-    Call ReplacePiece(, .FallingPiece, True)
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Public Sub ForceSpawn(ByVal Shape As TetrominoShape)
-With This
-    Call ReplacePiece(.FallingPiece)
-    Let .FallingShape = Shape
-    Set .FallingPiece = Tetromino.GetTetromino(.FallingShape, IIf(.FallingShape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
-    Call ReplacePiece(, .FallingPiece, True)
-End With
-End Sub
-'-----------------------------------------------------------------------------80
-Private Function Hold() As Boolean
+Private Sub HoldKey_Pressed()
 With This
     If .IsHeld Then
         Let Message = "Already held"
     Else
         Let .IsHeld = True
-        
-        Call ReplacePiece(.FallingPiece)
-        
-        Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
-        Let .HeldShape = .FallingShape
-        
-        If TempShape <> 0 Then
-            Let .FallingShape = TempShape
-            Call Spawn
-        Else
-            Call SpawnIncoming(True, True)
-        End If
-        
+        Let .DrawHold = True
+        Call Hold
         Let Message = "Hold"
-        Call .Held.Spawn(.HeldShape)
-        
-        Let Hold = True
     End If
 End With
-End Function
+End Sub
+'-----------------------------------------------------------------------------80
+Private Sub Hold()
+With This
+    Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
+    Let .HeldShape = .FallingShape
+    
+    If TempShape <> 0 Then
+        Let .OverrideShape = TempShape
+    Else
+        Let .FallingShape = 0
+    End If
+    
+    Call .Held.Spawn(.HeldShape)
+End With
+End Sub
 '=============================================================================80
 ' Method: Translation
 '=============================================================================80
 Private Function Translate(ByVal x As Long, ByVal y As Long, _
-                           Optional ByVal AcceptOnSuccess As Boolean, _
-                           Optional ByVal DrawOnSuccess As Boolean) As Boolean
+                           ByVal Piece As Tetromino, _
+                           ByVal InPlace As Boolean) As Tetromino
+    If Not InPlace Then Set Piece = Piece.Copy
+    Call Piece.Translate(x, y)
+    If IsPieceValid(Piece) Then Set Translate = Piece
+End Function
+'-----------------------------------------------------------------------------80
+Private Function Move(ByVal x As Long, ByVal y As Long) As Boolean
 With This
-    Dim TestPiece As Tetromino: Set TestPiece = .FallingPiece.Copy
-    
-    Call TestPiece.Translate(x, y)
-    
-    If IsPieceValid(TestPiece) Then
-        Let Translate = True
-        If AcceptOnSuccess Then _
-            Call ReplacePiece(.FallingPiece, TestPiece, DrawOnSuccess)
-    ElseIf x = 1 Then
-        Call Ground
+    Dim TestPiece As Tetromino
+    Set TestPiece = Translate(x, y, .FallingPiece, False)
+
+    If Not TestPiece Is Nothing Then
+        Call ReplacePiece(.FallingPiece, TestPiece)
+        Let .DrawBoard = True
+        Let Move = True
     End If
 End With
 End Function
 '-----------------------------------------------------------------------------80
-Private Sub SoftDrop()
-    If Translate(1, 0, True, True) Then Let Score = 1 + This.Score
+' Move Left/Right/Up
+'-----------------------------------------------------------------------------80
+Private Sub MoveLeftKey_Pressed()
+    Call Move(0, -1)
 End Sub
 '-----------------------------------------------------------------------------80
-Private Sub HardDrop()
-With This
-    Dim x As Long
-    Dim TestPiece As Tetromino: Set TestPiece = .FallingPiece.Copy
-    
-    Do
-        Let x = 1 + x
-        Call TestPiece.Translate(1, 0)
-    Loop While IsPieceValid(TestPiece)
-    
-    Call TestPiece.Translate(-1, 0)
-    Call ReplacePiece(.FallingPiece, TestPiece, True)
-    Call Ground
-    Let Score = 2 * (x - 1) + .Score
-End With
+Private Sub MoveRightKey_Pressed()
+    Call Move(0, 1)
 End Sub
 '-----------------------------------------------------------------------------80
-Private Sub UpdateGhostPiece()
-With This
+Private Sub MoveUpKey_Pressed()
+    Call Move(-1, 0)
+End Sub
+'-----------------------------------------------------------------------------80
+' Soft Drop
+'-----------------------------------------------------------------------------80
+Private Sub GravityDrop()
+    If Not Move(1, 0) Then Let This.Ground = True
+End Sub
+'-----------------------------------------------------------------------------80
+Private Sub SoftDropKey_Pressed()
+    If Move(1, 0) Then
+        Let Score = 1 + This.Score
+    Else
+        Let This.Ground = True
+    End If
+End Sub
+'-----------------------------------------------------------------------------80
+' Hard Drop
+'-----------------------------------------------------------------------------80
+Private Sub HardDropKey_Pressed()
+    Let Score = 2 * (HardDropBeforeGrounded(This.FallingPiece)) + This.Score
+    Let This.Ground = True
+End Sub
+'-----------------------------------------------------------------------------80
+Private Function HardDropBeforeGrounded(ByRef Piece As Tetromino) As Long
+With Piece.Copy
     Dim x As Long
     
-    Call ReplacePiece(.GhostPiece)
-    
-    Set .GhostPiece = .FallingPiece.Copy
-
-    Do
+    Do While Not Translate(1, 0, .Self, True) Is Nothing
         Let x = 1 + x
-        Call .GhostPiece.Translate(1, 0)
-    Loop While IsPieceValid(.GhostPiece)
-
-    Call .GhostPiece.Translate(-1, 0)
+    Loop
     
-    Call ReplacePiece(, .GhostPiece)
+    Call Translate(-1, 0, .Self, True)
+    Call ReplacePiece(This.FallingPiece, .Self)
+    Let This.DrawBoard = True
+    Let HardDropBeforeGrounded = x
 End With
-End Sub
+End Function
 '-----------------------------------------------------------------------------80
 Private Sub Ground()
 With This
-    Let .IsHeld = False
-    
     Dim B As Variant
     For Each B In .FallingPiece.Blocks
         Set B.Parent = Nothing
@@ -720,17 +756,19 @@ With This
         If B.x < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.x
     Next B
     
-    Let Message = vbNullString
-    Call ClearLines
-    Call SpawnIncoming(True, True)
+    Let .IsHeld = False
+    Let .FallingShape = 0
+    Set .FallingPiece = Nothing
 End With
 End Sub
 '=============================================================================80
 ' Method: Rotation
 '=============================================================================80
-Private Function Rotate(ByVal Sign As Long, _
-                        Optional ByVal AcceptOnSuccess As Boolean, _
-                        Optional ByVal DrawOnSuccess As Boolean) As Boolean
+Private Sub RotateKey_Pressed(ByVal Sign As Long)
+    Call Rotate(Sign)
+End Sub
+'-----------------------------------------------------------------------------80
+Private Function Rotate(ByVal Sign As Long) As Boolean
 With This
     Dim TestPiece As Tetromino: Set TestPiece = .FallingPiece.Copy
     
@@ -738,8 +776,6 @@ With This
     
     If IsPieceValid(TestPiece) Then
         Let Rotate = True
-        If AcceptOnSuccess Then _
-            Call ReplacePiece(.FallingPiece, TestPiece, DrawOnSuccess)
     Else ' Kick
         Dim Test As Variant
         For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, TestPiece.Stance)
@@ -747,12 +783,15 @@ With This
             
             If IsPieceValid(TestPiece) Then
                 Let Rotate = True
-                Let Message = "Wall kick"
-                If AcceptOnSuccess Then _
-                    Call ReplacePiece(.FallingPiece, TestPiece, DrawOnSuccess)
+                Let Message = "Kick"
                 Exit For
             End If
         Next Test
+    End If
+    
+    If Rotate Then
+        Call ReplacePiece(.FallingPiece, TestPiece)
+        Let .DrawBoard = True
     End If
 End With
 End Function
@@ -771,95 +810,24 @@ Private Function GetKickTable() As Variant
     
     Let GetKickTable = KickTable
 End Function
-'-----------------------------------------------------------------------------80
-' Stance of piece if rotate CW (or CCW) N times
-' | N   | 0 | 1 | 2 | 3 |
-' |-----|---|---|---|---|
-' | CCW | 0 | 1 | 2 | 3 |
-' | CW  | 0 | 3 | 2 | 1 |
-' If basic rotation fails, from the rotated stance, test by moving piece
-'-----------------------------------------------------------------------------80
-' SRS Kick Table for shape I:
-' -------------------------------------------------------------------------------------------------
-' |From| To |  Test1  |  Test2  |  Test3  |  Test4  |Trans|  Test1  |  T2-T1  |  T3-T2  |  T4-T3  |
-' |----|----|---------|---------|---------|---------|-----|---------|---------|---------|---------|
-' |  0 |  1 | ( 0,-1) | ( 0, 2) | (-2,-1) | ( 1, 2) |   1 | ( 0,-1) | ( 0, 3) | (-2,-3) | ( 3, 3) |
-' |  1 |  2 | ( 0,-2) | ( 0, 1) | ( 1,-2) | (-2, 1) |  12 | ( 0,-2) | ( 0, 3) | ( 1,-3) | (-3, 3) |
-' |  2 |  3 |     Negetive of transition 0 -> 1     |  23 |                                       |
-' |  3 |  0 |     Negetive of transition 1 -> 2     |  30 |                                       |
-' |  0 |  3 |     Negetive of transition 3 -> 0     |   3 |                                       |
-' |  3 |  2 |     Negetive of transition 2 -> 3     |  32 |                                       |
-' |  2 |  1 |     Negetive of transition 1 -> 2     |  21 |                                       |
-' |  1 |  0 |     Negetive of transition 0 -> 1     |  10 |                                       |
-' -------------------------------------------------------------------------------------------------
-' (0 -> 3) = (1 -> 2)
-' (3 -> 2) = (0 -> 1)
-' (2 -> 1) = (3 -> 0) = - (1 -> 2)
-' (1 -> 0) = (2 -> 3) = - (0 -> 1)
-'-----------------------------------------------------------------------------80
-' SRS Kick Table for shape T, J, L, S, Z:
-' -------------------------------------------------------------------------------------------------
-' |From| To |  Test1  |  Test2  |  Test3  |  Test4  |Trans|  Test1  |  T2-T1  |  T3-T2  |  T4-T3  |
-' |----|----|---------|---------|---------|---------|-----|---------|---------|---------|---------|
-' |  0 |  1 | ( 0, 1) | (-1, 1) | ( 2, 0) | ( 2, 1) |   1 | ( 0, 1) | (-1, 0) | ( 3,-1) | ( 0, 1) |
-' |  1 |  2 |     Negetive of transition 0 -> 1     |  12 |                                       |
-' |  2 |  3 | ( 0,-1) | (-1,-1) | ( 2, 0) | ( 2,-1) |  23 | ( 0,-1) | (-1, 0) | ( 3, 1) | ( 0,-1) |
-' |  3 |  0 |     Negetive of transition 2 -> 3     |  30 |                                       |
-' |  0 |  3 |     Negetive of transition 3 -> 0     |   3 |                                       |
-' |  3 |  2 |     Negetive of transition 2 -> 3     |  32 |                                       |
-' |  2 |  1 |     Negetive of transition 1 -> 2     |  21 |                                       |
-' |  1 |  0 |     Negetive of transition 0 -> 1     |  10 |                                       |
-' -------------------------------------------------------------------------------------------------
-' (0 -> 3) = (2 -> 3)
-' (3 -> 2) = (3 -> 0) = - (2 -> 3)
-' (2 -> 1) = (0 -> 1)
-' (1 -> 0) = (1 -> 2) = - (0 -> 1)
-'-----------------------------------------------------------------------------80
-Private Function GetKickTests(ByVal Shape As TetrominoShape, _
-                              ByVal FromStance As Long, ByVal ToStance As Long) As Variant
-    Dim Tests As Variant, Sign As Long
-    Dim Transition As Long: Let Transition = 10 * FromStance + ToStance
-    
-    Select Case Shape
-        Case IShape
-            Select Case Transition
-                Case 1, 10, 23, 32: Let Tests = Array(Array(0, -1), Array(0, 3), Array(-2, -3), Array(3, 3))
-                Case 3, 12, 21, 30: Let Tests = Array(Array(0, -2), Array(0, 3), Array(1, -3), Array(-3, 3))
-            End Select
-            
-            Select Case Transition
-                Case 1, 3, 12, 32: Let Sign = 1
-                Case Else: Let Sign = -1
-            End Select
-        Case TShape, JShape, LShape, SShape, ZShape
-            Select Case Transition
-                Case 1, 10, 12, 21: Let Tests = Array(Array(0, 1), Array(-1, 0), Array(3, -1), Array(0, 1))
-                Case 3, 23, 30, 32: Let Tests = Array(Array(0, -1), Array(-1, 0), Array(3, 1), Array(0, -1))
-            End Select
-            
-            Select Case Transition
-                Case 1, 3, 21, 23: Let Sign = 1
-                Case Else: Let Sign = -1
-            End Select
-    End Select
-    
-    If IsArray(Tests) Then
-        Let Tests(0)(0) = Sign * Tests(0)(0)
-        Let Tests(0)(1) = Sign * Tests(0)(1)
-        Let Tests(1)(0) = Sign * Tests(1)(0)
-        Let Tests(1)(1) = Sign * Tests(1)(1)
-        Let Tests(2)(0) = Sign * Tests(2)(0)
-        Let Tests(2)(1) = Sign * Tests(2)(1)
-        Let Tests(3)(0) = Sign * Tests(3)(0)
-        Let Tests(3)(1) = Sign * Tests(3)(1)
-        
-        Let GetKickTests = Tests
-    End If
-End Function
 '=============================================================================80
 ' Method: Clearing
 '=============================================================================80
 Private Sub ClearLines()
+With This
+    Dim LineCount As Long: Let LineCount = ClearLines_Internal()
+    
+    If LineCount Then ' <> 0
+        Let .DrawBoard = True
+        Let .FirstNonEmptyRow = LineCount + .FirstNonEmptyRow
+        Let LinesCleared = LineCount + .LinesCleared
+        Let Score = 100 * Choose(LineCount, 1, 3, 5, 8) * .Level + .Score
+        Let Message = Choose(LineCount, "Single", "Double", "Triple", "Tetris!")
+    End If
+End With
+End Sub
+'-----------------------------------------------------------------------------80
+Private Function ClearLines_Internal() As Long
 With This
     Dim x As Long, y As Long, i As Long
     Dim LineCount As Long, RowOfFirstLine As Long
@@ -909,14 +877,11 @@ With This
                 End With
             Next y
         Next x
-        
-        Let LinesCleared = LineCount + .LinesCleared
-        Let .FirstNonEmptyRow = LineCount + .FirstNonEmptyRow
-        Let Score = 100 * Choose(LineCount, 1, 3, 5, 8) * .Level + .Score
-        Let Message = Choose(LineCount, "Single", "Double", "Triple", "Tetris!")
     End If
+    
+    Let ClearLines_Internal = LineCount
 End With
-End Sub
+End Function
 '=============================================================================80
 ' Helper Function
 '=============================================================================80
