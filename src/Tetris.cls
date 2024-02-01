@@ -90,6 +90,7 @@ End Sub
 '-----------------------------------------------------------------------------80
 Private Sub Class_Terminate()
     'Call This.Worksheet.Unprotect
+    Let StartButtonText = "S T A R T"
     Call SpeedUp(False)
 End Sub
 '=============================================================================80
@@ -185,19 +186,30 @@ Public Property Let Gravity(ByVal bool As Boolean)
 '        Let Message = "Gravity Off"
 '    End If
 End Property
+'-----------------------------------------------------------------------------80
+Private Property Let StartButtonText(ByVal text As String)
+    Let This.Worksheet.Range("U26").Value2 = text
+End Property
 '=============================================================================80
 ' Read-Write Property
 '=============================================================================80
+Public Property Get GameState() As Long
+    Let GameState = This.GameState
+End Property
 Public Property Let GameState(ByVal GameState As Long)
     Let This.GameState = GameState
     ' -3: Error, -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
     Select Case This.GameState
         Case -3: Let Message = "Error"
         Case -2: Let Message = "Ended"
+                 Let StartButtonText = "S T A R T"
         Case -1: Let Message = "Game Over"
         Case 0: Let Message = "Paused"
+                Let StartButtonText = "R E S U M E"
         Case 1: Let Message = "New Game"
+                Let StartButtonText = "P A U S S"
         Case 2: Let Message = "Resumed"
+                Let StartButtonText = "P A U S S"
     End Select
 End Property
 '=============================================================================80
@@ -263,6 +275,7 @@ With This
     Next Tet
     
     ' Some settings
+    
     Let .KickTable = GetKickTable
     Let Level = 1
     Let GameState = 1
