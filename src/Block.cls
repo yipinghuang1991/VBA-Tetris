@@ -65,7 +65,7 @@ End Property
 '=============================================================================80
 ' Read-Write Property
 '=============================================================================80
-Public Property Get x() As Long
+Private Property Get x() As Long
 With This
     If .HasParent Then
         Let x = .Parent.x + .x
@@ -78,7 +78,7 @@ Public Property Let x(ByVal x As Long)
     Let This.x = x
 End Property
 '-----------------------------------------------------------------------------80
-Public Property Get y() As Long
+Private Property Get y() As Long
 With This
     If .HasParent Then
         Let y = .Parent.y + .y

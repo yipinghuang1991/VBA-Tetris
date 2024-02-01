@@ -188,10 +188,6 @@ End Property
 '=============================================================================80
 ' Read-Write Property
 '=============================================================================80
-Public Property Get GameState() As Long
-    Let GameState = This.GameState
-End Property
-'-----------------------------------------------------------------------------80
 Public Property Let GameState(ByVal GameState As Long)
     Let This.GameState = GameState
     ' -3: Error, -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
