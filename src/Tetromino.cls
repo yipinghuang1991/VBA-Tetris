@@ -172,51 +172,53 @@ End Sub
 ' Helper Function
 '=============================================================================80
 Private Function GetTetrominoBlocks(ByVal Shape As TetrominoShape) As Block()
+With Block
     Dim Blocks() As Block: ReDim Blocks(1 To 4)
     ' The coordinates are with respect to their rotation center
     Select Case Shape
-        Case IShape: Set Blocks(1) = Block.GetBlock(0, -1, True)
-                     Set Blocks(2) = Block.GetBlock(0, 0, True)
-                     Set Blocks(3) = Block.GetBlock(0, 1, True)
-                     Set Blocks(4) = Block.GetBlock(0, 2, True)
-        Case OShape: Set Blocks(1) = Block.GetBlock(0, 0, True)
-                     Set Blocks(2) = Block.GetBlock(0, 1, True)
-                     Set Blocks(3) = Block.GetBlock(1, 1, True)
-                     Set Blocks(4) = Block.GetBlock(1, 0, True)
-        Case TShape: Set Blocks(1) = Block.GetBlock(-1, 0)
-                     Set Blocks(2) = Block.GetBlock(0, -1)
-                     Set Blocks(3) = Block.GetBlock(0, 0)
-                     Set Blocks(4) = Block.GetBlock(0, 1)
+        Case IShape: Set Blocks(1) = .GetBlock(0, -1, True)
+                     Set Blocks(2) = .GetBlock(0, 0, True)
+                     Set Blocks(3) = .GetBlock(0, 1, True)
+                     Set Blocks(4) = .GetBlock(0, 2, True)
+        Case OShape: Set Blocks(1) = .GetBlock(0, 0, True)
+                     Set Blocks(2) = .GetBlock(0, 1, True)
+                     Set Blocks(3) = .GetBlock(1, 1, True)
+                     Set Blocks(4) = .GetBlock(1, 0, True)
+        Case TShape: Set Blocks(1) = .GetBlock(-1, 0)
+                     Set Blocks(2) = .GetBlock(0, -1)
+                     Set Blocks(3) = .GetBlock(0, 0)
+                     Set Blocks(4) = .GetBlock(0, 1)
         Case JShape, LShape
-                     Set Blocks(1) = Block.GetBlock(0, 1)
-                     Set Blocks(2) = Block.GetBlock(0, 0)
-                     Set Blocks(3) = Block.GetBlock(0, -1)
-                     Set Blocks(4) = Block.GetBlock(-1, -1)
-'        Case LShape: Let Blocks(1) = Block.GetBlock(0, -1)
-'                     Let Blocks(2) = Block.GetBlock(0, 0)
-'                     Let Blocks(3) = Block.GetBlock(0, 1)
-'                     Let Blocks(4) = Block.GetBlock(-1, 1)
+                     Set Blocks(1) = .GetBlock(0, 1)
+                     Set Blocks(2) = .GetBlock(0, 0)
+                     Set Blocks(3) = .GetBlock(0, -1)
+                     Set Blocks(4) = .GetBlock(-1, -1)
+'        Case LShape: Let Blocks(1) = .GetBlock(0, -1)
+'                     Let Blocks(2) = .GetBlock(0, 0)
+'                     Let Blocks(3) = .GetBlock(0, 1)
+'                     Let Blocks(4) = .GetBlock(-1, 1)
         Case SShape, ZShape
-                     Set Blocks(1) = Block.GetBlock(-1, 1)
-                     Set Blocks(2) = Block.GetBlock(-1, 0)
-                     Set Blocks(3) = Block.GetBlock(0, 0)
-                     Set Blocks(4) = Block.GetBlock(0, -1)
-'        Case ZShape: Let Blocks(1) = Block.GetBlock(-1, -1)
-'                     Let Blocks(2) = Block.GetBlock(-1, 0)
-'                     Let Blocks(3) = Block.GetBlock(0, 0)
-'                     Let Blocks(4) = Block.GetBlock(0, 1)
+                     Set Blocks(1) = .GetBlock(-1, 1)
+                     Set Blocks(2) = .GetBlock(-1, 0)
+                     Set Blocks(3) = .GetBlock(0, 0)
+                     Set Blocks(4) = .GetBlock(0, -1)
+'        Case ZShape: Let Blocks(1) = .GetBlock(-1, -1)
+'                     Let Blocks(2) = .GetBlock(-1, 0)
+'                     Let Blocks(3) = .GetBlock(0, 0)
+'                     Let Blocks(4) = .GetBlock(0, 1)
     End Select
     
     Let GetTetrominoBlocks = Blocks
+End With
 End Function
 '-----------------------------------------------------------------------------80
 Private Function GetTetrominoColor(ByVal Shape As TetrominoShape) As Long
 Select Case Shape
     Case IShape: Let GetTetrominoColor = RGB(0, 255, 255)
     Case OShape: Let GetTetrominoColor = RGB(255, 255, 0)
-    Case TShape: Let GetTetrominoColor = RGB(128, 0, 128)
+    Case TShape: Let GetTetrominoColor = RGB(127, 0, 127)
     Case JShape: Let GetTetrominoColor = RGB(0, 0, 255)
-    Case LShape: Let GetTetrominoColor = RGB(255, 128, 0)
+    Case LShape: Let GetTetrominoColor = RGB(255, 127, 0)
     Case SShape: Let GetTetrominoColor = RGB(0, 255, 0)
     Case ZShape: Let GetTetrominoColor = RGB(255, 0, 0)
 End Select

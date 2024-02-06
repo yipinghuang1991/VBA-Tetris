@@ -16,10 +16,18 @@ Option Explicit
 ' https://github.com/yipinghuang1991/VBA-Tetris
 '=============================================================================80
 '=============================================================================80
+' Enumeration
+'=============================================================================80
+Public Enum CellState
+    Unoccupied = 0
+    DroppingPiece
+    GroundedBlock
+End Enum
+'=============================================================================80
 ' Variable Container
 '=============================================================================80
 Private Type Variable
-    State As Long ' -1 = unoccupied, 0 = grounded block, 1 = part of piece
+    State As CellState
     BackgroundColor As Long
     Range As Range
     Block As Block
@@ -27,30 +35,23 @@ End Type
 '-----------------------------------------------------------------------------80
 Private This As Variable
 '=============================================================================80
-' Event
-'=============================================================================80
-Private Sub Class_Initialize()
-With This
-    Let .State = -1
-End With
-End Sub
-'=============================================================================80
 ' Read-Only Property
 '=============================================================================80
 Public Property Get Self() As Cell
     Set Self = Me
 End Property
 '-----------------------------------------------------------------------------80
-Public Property Get State() As Long
+Public Property Get State() As CellState
     Let State = This.State
 End Property
 '-----------------------------------------------------------------------------80
 Public Property Get Color() As Long
 With This
-    Select Case .State
-        Case -1:   Let Color = .BackgroundColor
-        Case Else: Let Color = .Block.Color
-    End Select
+    If .State <> CellState.Unoccupied Then
+        Let Color = .Block.Color
+    Else
+        Color = .BackgroundColor
+    End If
 End With
 End Property
 '=============================================================================80
@@ -59,22 +60,25 @@ End Property
 Public Property Let BackgroundColor(ByVal BackgroundColor As Long)
     Let This.BackgroundColor = BackgroundColor
 End Property
-'-----------------------------------------------------------------------------80
-Public Property Set Range(ByRef Range As Range)
-    Set This.Range = Range
-End Property
 '=============================================================================80
 ' Read-Write Property
 '=============================================================================80
+Public Property Get Range() As Range
+    Set Range = This.Range
+End Property
+Public Property Set Range(ByRef Range As Range)
+    Set This.Range = Range
+End Property
+'-----------------------------------------------------------------------------80
 Public Property Get Block() As Block
     Set Block = This.Block
 End Property
 Public Property Set Block(ByRef Block As Block)
 With This
     Select Case True
-        Case Block Is Nothing: Let .State = -1
-        Case Block.HasParent:  Let .State = 1
-        Case Else:             Let .State = 0
+        Case Block Is Nothing: Let .State = CellState.Unoccupied
+        Case Block.HasParent:  Let .State = CellState.DroppingPiece
+        Case Else:             Let .State = CellState.GroundedBlock
     End Select
     
     Set .Block = Block
@@ -84,5 +88,7 @@ End Property
 ' Method
 '=============================================================================80
 Public Sub Draw()
-    Let This.Range.Interior.Color = Color
+With This.Range.Interior
+    If .Color <> Color Then Let .Color = Color
+End With
 End Sub

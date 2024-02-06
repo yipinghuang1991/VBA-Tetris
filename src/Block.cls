@@ -93,10 +93,10 @@ End Property
 '-----------------------------------------------------------------------------80
 Public Property Get Color() As Long
 With This
-    If This.HasParent Then
-        Let Color = This.Parent.Color
+    If .HasParent Then
+        Let Color = .Parent.Color
     Else
-        Let Color = This.Color
+        Let Color = .Color
     End If
 End With
 End Property

@@ -18,22 +18,22 @@ Public Sub StartButton_Click()
         Set Game = Tetris.GetTetris(ThisWorkbook.Worksheets("Tetris"), "K8")
         Call Game.Start
         Set Game = Nothing
-    ElseIf Game.GameState > 0 Then
-        Let Game.GameState = 0
-    ElseIf Game.GameState = 0 Then
-        Let Game.GameState = 2
+    ElseIf Game.State > GameState.Paused Then
+        Let Game.State = GameState.Paused
+    ElseIf Game.State = GameState.Paused Then
+        Let Game.State = GameState.Resumed
     End If
 End Sub
 '-----------------------------------------------------------------------------80
 Public Sub StopButton_Click()
+With ThisWorkbook.Worksheets("Tetris")
     If Game Is Nothing Then
-        With ThisWorkbook.Worksheets("Tetris")
-            Let .Range("B29").Value2 = "Not Started"
-            Let .Range("B2").Value2 = "S T A R T"
-        End With
+        Let .Range("B29").Value2 = "Not Started"
     Else
-        Let Game.GameState = -2
+        Let Game.State = GameState.EndManually
         End
     End If
+    
+    Let .Range("B2").Value2 = "S T A R T"
+End With
 End Sub
-

@@ -32,12 +32,21 @@ Const BackgroundColor As Long = 0
 Const RepeatDelay As Long = 200
 Const ReciprocalOfRepeatRate As Long = 35
 '=============================================================================80
+' Enumeration
+'=============================================================================80
+Public Enum GameState
+    Error = -9
+    EndManually
+    ToppedOut
+    Paused = 0
+    Started
+    Resumed
+End Enum
+'=============================================================================80
 ' Variable Container
 '=============================================================================80
 Private Type Variable
-' Set Up
-    ' -3: Error, -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
-    GameState As Long
+    State As GameState
     Worksheet As Worksheet
     IsShowcase As Boolean
     Height As Long
@@ -58,8 +67,8 @@ Private Type Variable
     IsHeld As Boolean
     ' Piece
     OverrideShape As TetrominoShape
-    FallingShape As TetrominoShape
-    FallingPiece As Tetromino
+    DroppingShape As TetrominoShape
+    DroppingPiece As Tetromino
     GhostPiece As Tetromino
     ' Level
     Level As Long
@@ -73,6 +82,8 @@ Private Type Variable
     LastMoveDownTime As Long
     ' Kick
     KickTable As Variant
+    ' States
+    Spawn As Boolean
     Ground As Boolean
     Clear As Boolean
     DrawBoard As Boolean
@@ -189,40 +200,198 @@ Private Property Let Message(ByVal str As String)
     Let This.Worksheet.Range("B29").Value2 = str
 End Property
 '-----------------------------------------------------------------------------80
-Public Property Let Gravity(ByVal bool As Boolean)
-    Let This.Gravity = bool
-    
-'    If This.Gravity Then
-'        Let Message = "Gravity On"
-'    Else
-'        Let Message = "Gravity Off"
-'    End If
-End Property
-'-----------------------------------------------------------------------------80
 Private Property Let StartButtonText(ByVal text As String)
     Let This.Worksheet.Range("B2").Value2 = text
+End Property
+'-----------------------------------------------------------------------------80
+Private Property Let DroppingShape(ByVal DroppingShape As TetrominoShape)
+With This
+    If DroppingShape = 0 Then .DroppingPiece = Nothing
+    Let .DroppingShape = DroppingShape
+    Let .Spawn = True
+End With
+End Property
+'-----------------------------------------------------------------------------80
+Private Property Set DroppingPiece(ByRef DroppingPiece As Tetromino)
+With This
+    Dim B As Variant
+
+    If Not .DroppingPiece Is Nothing Then
+        For Each B In .DroppingPiece.Blocks
+            Set .Matrix(B.x, B.y).Block = Nothing
+            Call AddChangedCell(.Matrix(B.x, B.y))
+        Next B
+    End If
+
+    Set .DroppingPiece = DroppingPiece
+
+    If Not .DroppingPiece Is Nothing Then
+        For Each B In .DroppingPiece.Blocks
+            Set .Matrix(B.x, B.y).Block = B
+            Call AddChangedCell(.Matrix(B.x, B.y))
+        Next B
+    End If
+End With
+End Property
+'-----------------------------------------------------------------------------80
+'Private Property Set DroppingPiece(ByRef Piece As Tetromino)
+'With This
+'    Dim B As Variant, B2 As Variant
+'    Dim InIntersection As Boolean
+'    Select Case True
+'   '|
+'    Case (Not .DroppingPiece Is Nothing) And (Not Piece Is Nothing)
+'        For Each B In .DroppingPiece.Blocks
+'            Set .Matrix(B.x, B.y).Block = Nothing
+'        Next B
+'
+'        For Each B In Piece.Blocks
+'            Set .Matrix(B.x, B.y).Block = B
+'        Next B
+'        ' For symmetric difference, add them all
+'        For Each B In Piece.Blocks
+'            Let InIntersection = False
+'
+'            For Each B2 In .DroppingPiece.Blocks
+'                If B.x = B2.x And B.y = B2.y Then ' B in both
+'                    ' Intersection
+'                    If B.Color <> B2.Color Then
+'                        Call AddChangedCell(.Matrix(B.x, B.y))
+'                    End If
+'                    Let InIntersection = True
+'                    Exit For
+'                End If
+'            Next B2
+'
+'            If Not InIntersection Then
+'                ' In symdiff
+'                Call AddChangedCell(.Matrix(B.x, B.y))
+'            End If
+'        Next B
+'
+'        For Each B In .DroppingPiece.Blocks
+'            Let InIntersection = False
+'
+'            For Each B2 In Piece.Blocks
+'                If B.x = B2.x And B.y = B2.y Then ' B in both
+'                    ' Intersection
+'                    If B.Color <> B2.Color Then
+'                        Call AddChangedCell(.Matrix(B.x, B.y))
+'                    End If
+'                    Let InIntersection = True
+'                    Exit For
+'                End If
+'            Next B2
+'
+'            If Not InIntersection Then
+'                ' In symdiff
+'                Call AddChangedCell(.Matrix(B.x, B.y))
+'            End If
+'        Next B
+'    Case (Not .DroppingPiece Is Nothing) And (Piece Is Nothing)
+'        For Each B In .DroppingPiece.Blocks
+'            Set .Matrix(B.x, B.y).Block = Nothing
+'            Call AddChangedCell(.Matrix(B.x, B.y))
+'        Next B
+'    Case (.DroppingPiece Is Nothing) And (Not Piece Is Nothing)
+'        For Each B In Piece.Blocks
+'            Set .Matrix(B.x, B.y).Block = B
+'            Call AddChangedCell(.Matrix(B.x, B.y))
+'        Next B
+'   '|
+'    End Select
+'
+'    Set .DroppingPiece = Piece
+'End With
+'End Property
+'-----------------------------------------------------------------------------80
+Private Property Set GhostPiece(ByRef Piece As Tetromino)
+With This
+    Dim B As Variant, U As Range
+    
+    If Not .GhostPiece Is Nothing Then
+        For Each B In .GhostPiece.Blocks
+            If U Is Nothing Then
+                Set U = .Matrix(B.x, B.y).Range
+            Else
+                Set U = Application.Union(.Matrix(B.x, B.y).Range, U)
+            End If
+            'Call .Matrix(B.x, B.y).Range.BorderAround(, XlBorderWeight.xlMedium, Color:=RGB(31, 31, 31))
+'            Let .Matrix(B.x, B.y).Range.Borders(XlBordersIndex.xlEdgeBottom).Color = RGB(31, 31, 31)
+'            Let .Matrix(B.x, B.y).Range.Borders(XlBordersIndex.xlEdgeLeft).Color = RGB(31, 31, 31)
+'            Let .Matrix(B.x, B.y).Range.Borders(XlBordersIndex.xlEdgeRight).Color = RGB(31, 31, 31)
+'            Let .Matrix(B.x, B.y).Range.Borders(XlBordersIndex.xlEdgeTop).Color = RGB(31, 31, 31)
+        Next B
+        
+        Let U.Borders(XlBordersIndex.xlEdgeBottom).Color = RGB(31, 31, 31)
+        Let U.Borders(XlBordersIndex.xlEdgeLeft).Color = RGB(31, 31, 31)
+        Let U.Borders(XlBordersIndex.xlEdgeRight).Color = RGB(31, 31, 31)
+        Let U.Borders(XlBordersIndex.xlEdgeTop).Color = RGB(31, 31, 31)
+'        Call U.BorderAround(, XlBorderWeight.xlMedium, Color:=RGB(31, 31, 31))
+    End If
+    
+    Set U = Nothing
+    Set .GhostPiece = Piece
+    
+    If Not .GhostPiece Is Nothing Then
+        For Each B In .GhostPiece.Blocks
+            If U Is Nothing Then
+                Set U = .Matrix(B.x, B.y).Range
+            Else
+                Set U = Application.Union(.Matrix(B.x, B.y).Range, U)
+            End If
+            'Call .Matrix(B.x, B.y).Range.BorderAround(, XlBorderWeight.xlMedium, Color:=.DroppingPiece.Color)
+            'Let .Matrix(B.x, B.y).Range.Borders(XlBordersIndex.xlEdgeBottom).Color = .DroppingPiece.Color
+            'Let .Matrix(B.x, B.y).Range.Borders(XlBordersIndex.xlEdgeLeft).Color = .DroppingPiece.Color
+            'Let .Matrix(B.x, B.y).Range.Borders(XlBordersIndex.xlEdgeRight).Color = .DroppingPiece.Color
+            'Let .Matrix(B.x, B.y).Range.Borders(XlBordersIndex.xlEdgeTop).Color = .DroppingPiece.Color
+        Next B
+        
+        Let U.Borders(XlBordersIndex.xlEdgeBottom).Color = .DroppingPiece.Color
+        Let U.Borders(XlBordersIndex.xlEdgeLeft).Color = .DroppingPiece.Color
+        Let U.Borders(XlBordersIndex.xlEdgeRight).Color = .DroppingPiece.Color
+        Let U.Borders(XlBordersIndex.xlEdgeTop).Color = .DroppingPiece.Color
+        'Call U.BorderAround(, XlBorderWeight.xlMedium, Color:=.DroppingPiece.Color)
+    End If
+End With
 End Property
 '=============================================================================80
 ' Read-Write Property
 '=============================================================================80
-Public Property Get GameState() As Long
-    Let GameState = This.GameState
+Public Property Get State() As GameState
+    Let State = This.State
 End Property
-Public Property Let GameState(ByVal GameState As Long)
-    Let This.GameState = GameState
-    ' -3: Error, -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
-    Select Case This.GameState
-        Case -3: Let Message = "Error"
-        Case -2: Let Message = "Ended"
-                 Let StartButtonText = "S T A R T"
-        Case -1: Let Message = "Game Over"
-        Case 0: Let Message = "Paused"
-                Let StartButtonText = "R E S U M E"
-        Case 1: Let Message = "New Game"
-                Let StartButtonText = "P A U S S"
-        Case 2: Let Message = "Resumed"
-                Let StartButtonText = "P A U S S"
+Public Property Let State(ByVal State As GameState)
+With This
+    Let .State = State
+    Select Case .State
+        Case GameState.Error:       Let Message = "Error"
+        Case GameState.EndManually: Let Message = "Ended"
+                                    Let StartButtonText = "S T A R T"
+        Case GameState.ToppedOut:   Let Message = "Game Over"
+        Case GameState.Paused:      Let Message = "Paused"
+                                    Let StartButtonText = "R E S U M E"
+        Case GameState.Started:     Let Message = "New Game"
+                                    Let StartButtonText = "P A U S S"
+        Case GameState.Resumed:     Let Message = "Resumed"
+                                    Let StartButtonText = "P A U S S"
     End Select
+End With
+End Property
+'-----------------------------------------------------------------------------80
+Public Property Get Gravity() As Boolean
+    Let Gravity = This.Gravity
+End Property
+Private Property Let Gravity(ByVal Toggle As Boolean)
+With This
+    Let .Gravity = Toggle
+    
+    If .Gravity Then
+        Let Message = "Gravity On"
+    Else
+        Let Message = "Gravity Off"
+    End If
+End With
 End Property
 '=============================================================================80
 ' Constructor
@@ -290,7 +459,7 @@ With This
     
     Let .KickTable = GetKickTable
     Let Level = 1
-    Let GameState = 1
+    Let State = GameState.Started
     Let .Gravity = True
     Let .FirstNonEmptyRow = .Height
     Call GameLoop
@@ -298,19 +467,22 @@ End With
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub GameLoop()
-    On Error GoTo Err
+    'On Error GoTo Err
     
     Dim Time As Long, LastRepeatTime As Long, LastKeyPressedTime As Long
     Dim LastMoveDownTime As Long: Let LastMoveDownTime = 1000 * Timer()
-    ' -2: End Manually, -1: Topped Out, 0: Paused, 1: Ongoing, 2: Resumed
+    
     With This
    '| Decrease indentation level
-    Do While .GameState >= 0 ' If active
+    Do While .State >= GameState.Paused ' If active
    '| Decrease indentation level
     DoEvents
     
-    If .GameState = 0 Then ' If paused
-        If &H8000 And GetAsyncKeyState(vbKeyR) Then Let GameState = 2
+    If .State = GameState.Paused Then ' If paused
+        Select Case True
+            Case &H8000 And GetAsyncKeyState(vbKeyR):      Let State = GameState.Resumed
+            Case &H8000 And GetAsyncKeyState(vbKeyEscape): Let State = GameState.EndManually
+        End Select
     Else ' .GameState > 0
         Let Time = 1000 * Timer()
         
@@ -343,7 +515,7 @@ Private Sub GameLoop()
         ElseIf .OverrideShape <> 0 Then
             Call Spawn(.OverrideShape)
             Let .OverrideShape = 0
-        ElseIf .FallingShape = 0 Then
+        ElseIf .DroppingShape = 0 Then
             Call SpawnNext
         ElseIf Time - LastMoveDownTime >= .PieceStayTime Then
             If .Gravity Then Call GravityDrop
@@ -472,14 +644,14 @@ Private Sub GameLoop()
             Case &H8000 And GetAsyncKeyState(vbKeyG)
                 If .LastPressedKey <> vbKeyG Then
                     Let .LastPressedKey = vbKeyG
-                    Let .Gravity = Not .Gravity
+                    Let Gravity = Not Gravity
                 End If
             ' Pause
             Case &H8000 And GetAsyncKeyState(vbKeyP)
-                Let GameState = 0
+                Let State = GameState.Paused
             ' End
             Case &H8000 And GetAsyncKeyState(vbKeyEscape)
-                Let GameState = -2
+                Let State = GameState.EndManually
             Case Else
                 If .LastPressedKey <> 0 Then Let .LastPressedKey = 0
            '| Decrease indentation level
@@ -493,7 +665,7 @@ Private Sub GameLoop()
     
     Exit Sub
 Err:
-    Let GameState = -3
+    Let State = GameState.Error
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub InitializeCells()
@@ -518,7 +690,7 @@ With This
         Let .Borders(XlBordersIndex.xlInsideHorizontal).Color = RGB(31, 31, 31)
         Let .Borders(XlBordersIndex.xlInsideVertical).Weight = XlBorderWeight.xlMedium
         Let .Borders(XlBordersIndex.xlInsideVertical).Color = RGB(31, 31, 31)
-        Call .BorderAround(, XlBorderWeight.xlMedium)
+        Call .BorderAround(, XlBorderWeight.xlMedium, , RGB(255, 255, 0))
     End With
     
     Dim C As Variant
@@ -552,63 +724,6 @@ End Sub
 '=============================================================================80
 ' Method: Tetromino
 '=============================================================================80
-'Private Sub ReplacePiece(Optional ByRef PieceToUnlink As Tetromino, _
-'                         Optional ByRef PieceToLink As Tetromino)
-'With This
-'    Dim BU As Variant, BL As Variant, IsContainedIn As Boolean
-'
-'    For Each BU In PieceToUnlink.Blocks
-'        Set .Matrix(BU.x, BU.y).Block = Nothing
-'        Let IsContainedIn = False
-'
-'        For Each BL In PieceToLink.Blocks
-'            If BU.x = BL.x And BU.y = BL.y Then
-'                Let IsContainedIn = True
-'                Exit For
-'            End If
-'        Next BL
-'
-'        If Not IsContainedIn Then Call AddChangedCell(.Matrix(BU.x, BU.y))
-'    Next BU
-'
-'    For Each BL In PieceToLink.Blocks
-'        Set .Matrix(BL.x, BL.y).Block = BL
-'
-'        For Each BU In PieceToUnlink.Blocks
-'            If BU.x = BL.x And BU.y = BL.y Then
-'                If BU.Color <> BL.Color Then _
-'                    Call AddChangedCell(.Matrix(BL.x, BL.y))
-'            End If
-'        Next BU
-'    Next BL
-'
-'    Set PieceToUnlink = PieceToLink
-'End With
-'End Sub
-'-----------------------------------------------------------------------------80
-Private Sub ReplacePiece(Optional ByRef PieceToUnlink As Tetromino, _
-                         Optional ByRef PieceToLink As Tetromino)
-With This
-    Dim B As Variant
-    
-    If Not PieceToUnlink Is Nothing Then
-        For Each B In PieceToUnlink.Blocks
-            Set .Matrix(B.x, B.y).Block = Nothing
-            Call AddChangedCell(.Matrix(B.x, B.y))
-        Next B
-    End If
-    
-    If Not PieceToLink Is Nothing Then
-        For Each B In PieceToLink.Blocks
-            Set .Matrix(B.x, B.y).Block = B
-            Call AddChangedCell(.Matrix(B.x, B.y))
-        Next B
-    End If
-    
-    Set PieceToUnlink = PieceToLink
-End With
-End Sub
-'-----------------------------------------------------------------------------80
 Private Function IsPieceValid(ByRef Piece As Tetromino) As Boolean
 With This
     Let IsPieceValid = True
@@ -618,7 +733,7 @@ With This
         If B.x > .Height Or B.y < 1 Or B.y > .Width Then
             Let IsPieceValid = False
             Exit For
-        ElseIf .Matrix(B.x, B.y).State = 0 Then
+        ElseIf .Matrix(B.x, B.y).State = CellState.GroundedBlock Then
             Let IsPieceValid = False
             Exit For
         End If
@@ -636,8 +751,7 @@ End Sub
 Private Sub SpawnNext()
 With This
     If Spawn(.IncomingShapes(1)) Then
-        ' Dequeue
-        Let .FallingShape = .IncomingShapes(1)
+        Let .DroppingShape = .IncomingShapes(1) ' Dequeue
         Call .IncomingShapes.Remove(1)
         If .IncomingShapes.Count = 6 Then Call AddBag
         
@@ -646,6 +760,7 @@ With This
              Call .Nexts(i).Spawn(.IncomingShapes(i))
         Next i
         
+        Set GhostPiece = GetGhostPiece()
         Let .DrawNexts = True
     End If
 End With
@@ -657,12 +772,12 @@ With This
     Set TestPiece = Tetromino.GetTetromino(Shape, IIf(Shape = OShape, 1, 2), IIf(.IsShowcase, 2, 5))
     
     If IsPieceValid(TestPiece) Then
-        Call ReplacePiece(.FallingPiece, TestPiece)
+        Set DroppingPiece = TestPiece
         Let .DrawBoard = True
-        Let .FallingShape = Shape
+        Let .DroppingShape = Shape
         Let Spawn = True
     Else
-        Let GameState = -1
+        Let State = -1
     End If
 End With
 End Function
@@ -683,12 +798,12 @@ End Sub
 Private Sub Hold()
 With This
     Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
-    Let .HeldShape = .FallingShape
+    Let .HeldShape = .DroppingShape
     
     If TempShape <> 0 Then
         Let .OverrideShape = TempShape
     Else
-        Let .FallingShape = 0
+        Let .DroppingShape = 0
     End If
     
     Call .Held.Spawn(.HeldShape)
@@ -708,10 +823,10 @@ End Function
 Private Function Move(ByVal x As Long, ByVal y As Long) As Boolean
 With This
     Dim TestPiece As Tetromino
-    Set TestPiece = Translate(x, y, .FallingPiece, False)
+    Set TestPiece = Translate(x, y, .DroppingPiece, False)
 
     If Not TestPiece Is Nothing Then
-        Call ReplacePiece(.FallingPiece, TestPiece)
+        Set DroppingPiece = TestPiece
         Let .DrawBoard = True
         Let Move = True
     End If
@@ -722,10 +837,12 @@ End Function
 '-----------------------------------------------------------------------------80
 Private Sub MoveLeftKey_Pressed()
     Call Move(0, -1)
+    Set GhostPiece = GetGhostPiece()
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub MoveRightKey_Pressed()
     Call Move(0, 1)
+    Set GhostPiece = GetGhostPiece()
 End Sub
 '-----------------------------------------------------------------------------80
 Private Sub MoveUpKey_Pressed()
@@ -749,49 +866,56 @@ End Sub
 ' Hard Drop
 '-----------------------------------------------------------------------------80
 Private Sub HardDropKey_Pressed()
-    Let Score = 2 * (HardDropBeforeGrounded(This.FallingPiece)) + This.Score
-    Let This.Ground = True
+With This
+    With .DroppingPiece.Copy
+        Let Score = 2 * MovePieceToBottom(.Self) + This.Score
+        Set DroppingPiece = .Self
+    End With
+    
+    Let .Ground = True
+    Let .DrawBoard = True
+End With
 End Sub
 '-----------------------------------------------------------------------------80
-Private Function HardDropBeforeGrounded(ByRef Piece As Tetromino) As Long
-With Piece.Copy
-    Dim x As Long
-    
-    Do While Not Translate(1, 0, .Self, True) Is Nothing
-        Let x = 1 + x
+Private Function MovePieceToBottom(ByRef Piece As Tetromino) As Long ' Return distance moved
+    Do While Not Translate(1, 0, Piece, True) Is Nothing
+        Let MovePieceToBottom = 1 + MovePieceToBottom
     Loop
-    
-    Call Translate(-1, 0, .Self, True)
-    Call ReplacePiece(This.FallingPiece, .Self)
-    Let This.DrawBoard = True
-    Let HardDropBeforeGrounded = x
-End With
+    Call Translate(-1, 0, Piece, True)
 End Function
 '-----------------------------------------------------------------------------80
 Private Sub Ground()
 With This
     Dim B As Variant
-    For Each B In .FallingPiece.Blocks
+    For Each B In .DroppingPiece.Blocks
         Set B.Parent = Nothing
         Set .Matrix(B.x, B.y).Block = B
         If B.x < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.x
     Next B
     
     Let .IsHeld = False
-    Let .FallingShape = 0
-    Set .FallingPiece = Nothing
+    Let .DroppingShape = 0
+    Set .DroppingPiece = Nothing
 End With
 End Sub
+'-----------------------------------------------------------------------------80
+Private Function GetGhostPiece() As Tetromino
+With This.DroppingPiece.Copy
+    Call MovePieceToBottom(.Self)
+    Set GetGhostPiece = .Self
+End With
+End Function
 '=============================================================================80
 ' Method: Rotation
 '=============================================================================80
 Private Sub RotateKey_Pressed(ByVal Sign As Long)
     Call Rotate(Sign)
+    Set GhostPiece = GetGhostPiece()
 End Sub
 '-----------------------------------------------------------------------------80
 Private Function Rotate(ByVal Sign As Long) As Boolean
 With This
-    Dim TestPiece As Tetromino: Set TestPiece = .FallingPiece.Copy
+    Dim TestPiece As Tetromino: Set TestPiece = .DroppingPiece.Copy
     
     Call TestPiece.Rotate(Sign) ' CCW: Sign = 1, CW: Sign = -1
     
@@ -799,7 +923,7 @@ With This
         Let Rotate = True
     Else ' Kick
         Dim Test As Variant
-        For Each Test In .KickTable(.FallingShape, .FallingPiece.Stance, TestPiece.Stance)
+        For Each Test In .KickTable(.DroppingShape, .DroppingPiece.Stance, TestPiece.Stance)
             Call TestPiece.Translate(Test(0), Test(1))
             
             If IsPieceValid(TestPiece) Then
@@ -811,7 +935,7 @@ With This
     End If
     
     If Rotate Then
-        Call ReplacePiece(.FallingPiece, TestPiece)
+        Set DroppingPiece = TestPiece
         Let .DrawBoard = True
     End If
 End With
@@ -858,7 +982,7 @@ With This
     ' where SourceRow has at least one block and is not a line
     For x = .Height To .FirstNonEmptyRow Step -1
         For y = 1 To .Width
-            If .Matrix(x, y).State <> 0 Then Exit For
+            If .Matrix(x, y).State <> CellState.GroundedBlock Then Exit For
         Next y
         
         If y = 1 + .Width Then
@@ -892,7 +1016,7 @@ With This
         For x = .FirstNonEmptyRow To -1 + LineCount + .FirstNonEmptyRow
             For y = 1 To .Width
                 With .Matrix(x, y)
-                    If .State = 0 Then
+                    If .State = CellState.GroundedBlock Then
                         Set .Block = Nothing
                         Call AddChangedCell(.Self)
                     End If

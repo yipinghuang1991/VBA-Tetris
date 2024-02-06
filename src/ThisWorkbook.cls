@@ -9,7 +9,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = True
 Private Sub Workbook_Open()
     With ThisWorkbook.Worksheets("Tetris")
-        Let .Range("U24").Value2 = vbNullString
-        Let .Range("U26").Value2 = "S T A R T"
+        Let .Range("B29").Value2 = vbNullString
+        Let .Range("B2").Value2 = "S T A R T"
     End With
 End Sub
