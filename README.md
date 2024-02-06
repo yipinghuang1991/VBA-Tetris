@@ -23,22 +23,24 @@ Feedbacks are welcome!
 7. Press Up arrow or X to rotate clockwise
 8. Press Control or Z to rotate counterclockwise
 9. Press Shift or C to hold piece
-10. Press ESC to end game
-11. Press 1 to spawn I, 2 to spawn Z, 3 to spawn O, 4 to spawn T, 5 to spawn S, 6 to spawn L, 7 to spawn J. (Not numpad keys) The falling piece will be discarded.
+10. Press P to pauss, R to resume, ESC to end game
+11. Press G to toggle gravity
+12. Press 1 to spawn I, 2 to spawn Z, 3 to spawn O, 4 to spawn T, 5 to spawn S, 6 to spawn L, 7 to spawn J. (Not numpad keys) The falling piece will be discarded.
 
 # What's Working
 * Hold piece
 * Hard drop
 * Pause/Resume
-* SRS Kick (Needs testing)
+* Ghost piece (performance hit)
+* SRS Kick
 * View 6 incoming shapes
 * 200 millisecond repeat delay
 * 35 millisecond repeat rate
 
 # To Do
+* Add hard drop lock delay
 * Add setting panel
 * Add custom keybinding
-* Add ghost piece
 * General performance improvement
 * Try to follow the [Tetris Guideline](https://tetris.fandom.com/wiki/Tetris_Guideline)
 
