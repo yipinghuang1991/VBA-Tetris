@@ -66,7 +66,6 @@ Private Type Variable
     Held As Tetris
     IsHeld As Boolean
     ' Piece
-    OverrideShape As TetrominoShape
     DroppingShape As TetrominoShape
     DroppingPiece As Tetromino
     GhostPiece As Tetromino
@@ -99,7 +98,6 @@ Private Sub Class_Initialize()
     Call SpeedUp(True)
     Set This.ChangedCells = New Dictionary
 End Sub
-'-----------------------------------------------------------------------------80
 Private Sub Class_Terminate()
     Let StartButtonText = "S T A R T"
     Call This.Worksheet.Unprotect
@@ -117,27 +115,31 @@ End Property
 Public Property Set Worksheet(ByRef Worksheet As Worksheet)
     Set This.Worksheet = Worksheet
 End Property
-'-----------------------------------------------------------------------------80
 Public Property Let IsShowcase(ByVal IsShowcase As Boolean)
     Let This.IsShowcase = IsShowcase
 End Property
-'-----------------------------------------------------------------------------80
 Public Property Let Height(ByVal Height As Long)
     Let This.Height = Height + IIf(This.IsShowcase, 0, 2)
 End Property
-'-----------------------------------------------------------------------------80
 Public Property Let Width(ByVal Width As Long)
     Let This.Width = Width
 End Property
-'-----------------------------------------------------------------------------80
 Public Property Let Cell_1_1_Address(ByVal Cell_1_1_Address As String)
 With This
     Let .Cell_1_1_Address = Cell_1_1_Address
     Set .Board = .Worksheet.Range(.Cell_1_1_Address).Resize(.Height, .Width)
-    Call InitializeCells
+    ReDim .Matrix(1 To .Height, 1 To .Width)
+    
+    Dim x As Long, y As Long
+    For x = 1 To .Height
+        For y = 1 To .Width
+            Set .Matrix(x, y) = New Cell
+            Let .Matrix(x, y).BackgroundColor = BackgroundColor
+            Set .Matrix(x, y).Range = .Board(x, y)
+        Next y
+    Next x
 End With
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Let Level(ByVal Level As Long)
 With This
     Let .Level = Level
@@ -152,7 +154,6 @@ With This
                                                            .Level Mod 10)
 End With
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Let TotalLinesCleared(ByVal Lines As Long)
 With This
     Let .TotalLinesCleared = Lines
@@ -163,7 +164,6 @@ With This
                                                            .TotalLinesCleared Mod 10)
 End With
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Let LinesCleared(ByVal Lines As Long)
 With This
     Let .LinesCleared = Lines
@@ -173,7 +173,6 @@ With This
     If .LinesCleared >= .LinesToLevelUp Then Let Level = 1 + .Level
 End With
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Let LinesToLevelUp(ByVal Lines As Long)
 With This
     Let .LinesToLevelUp = Lines
@@ -182,7 +181,6 @@ With This
                                                            .LinesToLevelUp Mod 10)
 End With
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Let Score(ByVal Score As Long)
 With This
     Let .Score = Score
@@ -195,23 +193,18 @@ With This
                                                            .Score Mod 10)
 End With
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Let Message(ByVal str As String)
     Let This.Worksheet.Range("B29").Value2 = str
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Let StartButtonText(ByVal text As String)
     Let This.Worksheet.Range("B2").Value2 = text
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Let DroppingShape(ByVal DroppingShape As TetrominoShape)
 With This
-    If DroppingShape = 0 Then .DroppingPiece = Nothing
     Let .DroppingShape = DroppingShape
-    Let .Spawn = True
+    If .DroppingShape <> 0 Then Let .Spawn = True
 End With
 End Property
-'-----------------------------------------------------------------------------80
 Private Property Set DroppingPiece(ByRef DroppingPiece As Tetromino)
 With This
     Dim B As Variant
@@ -231,80 +224,10 @@ With This
             Call AddChangedCell(.Matrix(B.x, B.y))
         Next B
     End If
+
+    Let .DrawBoard = True
 End With
 End Property
-'-----------------------------------------------------------------------------80
-'Private Property Set DroppingPiece(ByRef Piece As Tetromino)
-'With This
-'    Dim B As Variant, B2 As Variant
-'    Dim InIntersection As Boolean
-'    Select Case True
-'   '|
-'    Case (Not .DroppingPiece Is Nothing) And (Not Piece Is Nothing)
-'        For Each B In .DroppingPiece.Blocks
-'            Set .Matrix(B.x, B.y).Block = Nothing
-'        Next B
-'
-'        For Each B In Piece.Blocks
-'            Set .Matrix(B.x, B.y).Block = B
-'        Next B
-'        ' For symmetric difference, add them all
-'        For Each B In Piece.Blocks
-'            Let InIntersection = False
-'
-'            For Each B2 In .DroppingPiece.Blocks
-'                If B.x = B2.x And B.y = B2.y Then ' B in both
-'                    ' Intersection
-'                    If B.Color <> B2.Color Then
-'                        Call AddChangedCell(.Matrix(B.x, B.y))
-'                    End If
-'                    Let InIntersection = True
-'                    Exit For
-'                End If
-'            Next B2
-'
-'            If Not InIntersection Then
-'                ' In symdiff
-'                Call AddChangedCell(.Matrix(B.x, B.y))
-'            End If
-'        Next B
-'
-'        For Each B In .DroppingPiece.Blocks
-'            Let InIntersection = False
-'
-'            For Each B2 In Piece.Blocks
-'                If B.x = B2.x And B.y = B2.y Then ' B in both
-'                    ' Intersection
-'                    If B.Color <> B2.Color Then
-'                        Call AddChangedCell(.Matrix(B.x, B.y))
-'                    End If
-'                    Let InIntersection = True
-'                    Exit For
-'                End If
-'            Next B2
-'
-'            If Not InIntersection Then
-'                ' In symdiff
-'                Call AddChangedCell(.Matrix(B.x, B.y))
-'            End If
-'        Next B
-'    Case (Not .DroppingPiece Is Nothing) And (Piece Is Nothing)
-'        For Each B In .DroppingPiece.Blocks
-'            Set .Matrix(B.x, B.y).Block = Nothing
-'            Call AddChangedCell(.Matrix(B.x, B.y))
-'        Next B
-'    Case (.DroppingPiece Is Nothing) And (Not Piece Is Nothing)
-'        For Each B In Piece.Blocks
-'            Set .Matrix(B.x, B.y).Block = B
-'            Call AddChangedCell(.Matrix(B.x, B.y))
-'        Next B
-'   '|
-'    End Select
-'
-'    Set .DroppingPiece = Piece
-'End With
-'End Property
-'-----------------------------------------------------------------------------80
 Private Property Set GhostPiece(ByRef Piece As Tetromino)
 With This
     Dim B As Variant, U As Range
@@ -412,7 +335,7 @@ With New Tetris
 End With
 End Function
 '=============================================================================80
-' Method
+' Main Procedure
 '=============================================================================80
 Public Sub Start()
 With This
@@ -438,12 +361,10 @@ With This
         Set .Held = Tetris.GetTetris(.Worksheet, "D12", 2, 4, True)
         ReDim .Nexts(1 To 6)
         
-        Set .Nexts(1) = Tetris.GetTetris(.Worksheet, "X12", 2, 4, True)
-        Set .Nexts(2) = Tetris.GetTetris(.Worksheet, "X15", 2, 4, True)
-        Set .Nexts(3) = Tetris.GetTetris(.Worksheet, "X18", 2, 4, True)
-        Set .Nexts(4) = Tetris.GetTetris(.Worksheet, "X21", 2, 4, True)
-        Set .Nexts(5) = Tetris.GetTetris(.Worksheet, "X24", 2, 4, True)
-        Set .Nexts(6) = Tetris.GetTetris(.Worksheet, "X27", 2, 4, True)
+        Dim i As Long
+        For i = 1 To 6
+            Set .Nexts(i) = Tetris.GetTetris(.Worksheet, "X" & (9 + 3 * i), 2, 4, True)
+        Next i
     End If
     
     ' Draw board, hold, and nexts
@@ -456,7 +377,6 @@ With This
     Next Tet
     
     ' Some settings
-    
     Let .KickTable = GetKickTable
     Let Level = 1
     Let State = GameState.Started
@@ -465,7 +385,6 @@ With This
     Call GameLoop
 End With
 End Sub
-'-----------------------------------------------------------------------------80
 Private Sub GameLoop()
     'On Error GoTo Err
     
@@ -512,9 +431,9 @@ Private Sub GameLoop()
             Let .Ground = False
             Call Ground
             Let .Clear = True
-        ElseIf .OverrideShape <> 0 Then
-            Call Spawn(.OverrideShape)
-            Let .OverrideShape = 0
+        ElseIf .Spawn Then
+            Let .Spawn = False
+            Call Spawn(.DroppingShape)
         ElseIf .DroppingShape = 0 Then
             Call SpawnNext
         ElseIf Time - LastMoveDownTime >= .PieceStayTime Then
@@ -609,37 +528,37 @@ Private Sub GameLoop()
             Case &H8000 And GetAsyncKeyState(vbKey1)
                 If .LastPressedKey <> vbKey1 Then
                     Let .LastPressedKey = vbKey1
-                    Let .OverrideShape = IShape
+                    Let DroppingShape = IShape
                 End If
             Case &H8000 And GetAsyncKeyState(vbKey2)
                 If .LastPressedKey <> vbKey2 Then
                     Let .LastPressedKey = vbKey2
-                    Let .OverrideShape = ZShape
+                    Let DroppingShape = ZShape
                 End If
             Case &H8000 And GetAsyncKeyState(vbKey3)
                 If .LastPressedKey <> vbKey3 Then
                     Let .LastPressedKey = vbKey3
-                    Let .OverrideShape = OShape
+                    Let DroppingShape = OShape
                 End If
             Case &H8000 And GetAsyncKeyState(vbKey4)
                 If .LastPressedKey <> vbKey4 Then
                     Let .LastPressedKey = vbKey4
-                    Let .OverrideShape = TShape
+                    Let DroppingShape = TShape
                 End If
             Case &H8000 And GetAsyncKeyState(vbKey5)
                 If .LastPressedKey <> vbKey5 Then
                     Let .LastPressedKey = vbKey5
-                    Let .OverrideShape = SShape
+                    Let DroppingShape = SShape
                 End If
             Case &H8000 And GetAsyncKeyState(vbKey6)
                 If .LastPressedKey <> vbKey6 Then
                     Let .LastPressedKey = vbKey6
-                    Let .OverrideShape = LShape
+                    Let DroppingShape = LShape
                 End If
             Case &H8000 And GetAsyncKeyState(vbKey7)
                 If .LastPressedKey <> vbKey7 Then
                     Let .LastPressedKey = vbKey7
-                    Let .OverrideShape = JShape
+                    Let DroppingShape = JShape
                 End If
             Case &H8000 And GetAsyncKeyState(vbKeyG)
                 If .LastPressedKey <> vbKeyG Then
@@ -667,22 +586,25 @@ Private Sub GameLoop()
 Err:
     Let State = GameState.Error
 End Sub
-'-----------------------------------------------------------------------------80
-Private Sub InitializeCells()
+'=============================================================================80
+' Draw
+'=============================================================================80
+Private Sub AddChangedCell(ByRef ChangedCell As Variant)
+    On Error Resume Next
+    Call This.ChangedCells.Add(ChangedCell, vbNullString)
+End Sub
+Public Sub DrawChanged()
 With This
-    Dim x As Long, y As Long
-    ReDim .Matrix(1 To .Height, 1 To .Width)
-    
-    For x = 1 To .Height
-        For y = 1 To .Width
-            Set .Matrix(x, y) = New Cell
-            Let .Matrix(x, y).BackgroundColor = BackgroundColor
-            Set .Matrix(x, y).Range = .Board(x, y)
-        Next y
-    Next x
+    If .ChangedCells.Count <> 0 Then
+        Dim C As Variant
+        For Each C In .ChangedCells.Keys
+            Call C.Draw
+        Next C
+        
+        Set .ChangedCells = New Dictionary
+    End If
 End With
 End Sub
-'-----------------------------------------------------------------------------80
 Public Sub DrawAll()
 With This
     With .Board
@@ -699,30 +621,8 @@ With This
     Next C
 End With
 End Sub
-'-----------------------------------------------------------------------------80
-Private Sub AddChangedCell(ByRef ChangedCell As Variant)
-    On Error Resume Next
-    Call This.ChangedCells.Add(ChangedCell, vbNullString)
-End Sub
-'-----------------------------------------------------------------------------80
-Public Sub DrawChanged()
-With This
-    'Let Application.ScreenUpdating = False
-    
-    If .ChangedCells.Count Then
-        Dim C As Variant
-        For Each C In .ChangedCells.Keys
-            Call C.Draw
-        Next C
-        
-        Set .ChangedCells = New Dictionary
-    End If
-    
-    'Let Application.ScreenUpdating = True
-End With
-End Sub
 '=============================================================================80
-' Method: Tetromino
+' Validation
 '=============================================================================80
 Private Function IsPieceValid(ByRef Piece As Tetromino) As Boolean
 With This
@@ -740,32 +640,15 @@ With This
     Next B
 End With
 End Function
-'-----------------------------------------------------------------------------80
+'=============================================================================80
+' Spawn
+'=============================================================================80
 Private Sub AddBag()
     Dim v As Variant
     For Each v In ShuffleArray(Array(1, 2, 3, 4, 5, 6, 7))
         Call This.IncomingShapes.Add(v)
     Next v
 End Sub
-'-----------------------------------------------------------------------------80
-Private Sub SpawnNext()
-With This
-    If Spawn(.IncomingShapes(1)) Then
-        Let .DroppingShape = .IncomingShapes(1) ' Dequeue
-        Call .IncomingShapes.Remove(1)
-        If .IncomingShapes.Count = 6 Then Call AddBag
-        
-        Dim i As Long
-        For i = 1 To 6
-             Call .Nexts(i).Spawn(.IncomingShapes(i))
-        Next i
-        
-        Set GhostPiece = GetGhostPiece()
-        Let .DrawNexts = True
-    End If
-End With
-End Sub
-'-----------------------------------------------------------------------------80
 Public Function Spawn(ByVal Shape As TetrominoShape) As Boolean
 With This
     Dim TestPiece As Tetromino
@@ -773,14 +656,37 @@ With This
     
     If IsPieceValid(TestPiece) Then
         Set DroppingPiece = TestPiece
-        Let .DrawBoard = True
-        Let .DroppingShape = Shape
-        Let Spawn = True
+        If Not .IsShowcase Then Set GhostPiece = GetGhostPiece()
     Else
-        Let State = -1
+        Let State = GameState.ToppedOut
     End If
 End With
 End Function
+Private Sub SpawnNext()
+With This
+    Let DroppingShape = .IncomingShapes(1) ' Dequeue
+    Call .IncomingShapes.Remove(1)
+    If .IncomingShapes.Count = 6 Then Call AddBag
+    
+    Dim i As Long
+    For i = 1 To 6
+         Call .Nexts(i).Spawn(.IncomingShapes(i))
+    Next i
+    
+    Let .DrawNexts = True
+End With
+End Sub
+'=============================================================================80
+' Hold
+'=============================================================================80
+Private Sub Hold()
+With This
+    Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
+    Let .HeldShape = .DroppingShape
+    Let DroppingShape = TempShape
+    Call .Held.Spawn(.HeldShape)
+End With
+End Sub
 '-----------------------------------------------------------------------------80
 Private Sub HoldKey_Pressed()
 With This
@@ -794,23 +700,8 @@ With This
     End If
 End With
 End Sub
-'-----------------------------------------------------------------------------80
-Private Sub Hold()
-With This
-    Dim TempShape As TetrominoShape: Let TempShape = .HeldShape
-    Let .HeldShape = .DroppingShape
-    
-    If TempShape <> 0 Then
-        Let .OverrideShape = TempShape
-    Else
-        Let .DroppingShape = 0
-    End If
-    
-    Call .Held.Spawn(.HeldShape)
-End With
-End Sub
 '=============================================================================80
-' Method: Translation
+' Translation
 '=============================================================================80
 Private Function Translate(ByVal x As Long, ByVal y As Long, _
                            ByVal Piece As Tetromino, _
@@ -819,7 +710,6 @@ Private Function Translate(ByVal x As Long, ByVal y As Long, _
     Call Piece.Translate(x, y)
     If IsPieceValid(Piece) Then Set Translate = Piece
 End Function
-'-----------------------------------------------------------------------------80
 Private Function Move(ByVal x As Long, ByVal y As Long) As Boolean
 With This
     Dim TestPiece As Tetromino
@@ -827,7 +717,6 @@ With This
 
     If Not TestPiece Is Nothing Then
         Set DroppingPiece = TestPiece
-        Let .DrawBoard = True
         Let Move = True
     End If
 End With
@@ -839,12 +728,10 @@ Private Sub MoveLeftKey_Pressed()
     Call Move(0, -1)
     Set GhostPiece = GetGhostPiece()
 End Sub
-'-----------------------------------------------------------------------------80
 Private Sub MoveRightKey_Pressed()
     Call Move(0, 1)
     Set GhostPiece = GetGhostPiece()
 End Sub
-'-----------------------------------------------------------------------------80
 Private Sub MoveUpKey_Pressed()
     Call Move(-1, 0)
 End Sub
@@ -854,7 +741,6 @@ End Sub
 Private Sub GravityDrop()
     If Not Move(1, 0) Then Let This.Ground = True
 End Sub
-'-----------------------------------------------------------------------------80
 Private Sub SoftDropKey_Pressed()
     If Move(1, 0) Then
         Let Score = 1 + This.Score
@@ -865,6 +751,12 @@ End Sub
 '-----------------------------------------------------------------------------80
 ' Hard Drop
 '-----------------------------------------------------------------------------80
+Private Function MovePieceToBottom(ByRef Piece As Tetromino) As Long ' Return distance moved
+    Do While Not Translate(1, 0, Piece, True) Is Nothing
+        Let MovePieceToBottom = 1 + MovePieceToBottom
+    Loop
+    Call Translate(-1, 0, Piece, True)
+End Function
 Private Sub HardDropKey_Pressed()
 With This
     With .DroppingPiece.Copy
@@ -873,32 +765,11 @@ With This
     End With
     
     Let .Ground = True
-    Let .DrawBoard = True
 End With
 End Sub
-'-----------------------------------------------------------------------------80
-Private Function MovePieceToBottom(ByRef Piece As Tetromino) As Long ' Return distance moved
-    Do While Not Translate(1, 0, Piece, True) Is Nothing
-        Let MovePieceToBottom = 1 + MovePieceToBottom
-    Loop
-    Call Translate(-1, 0, Piece, True)
-End Function
-'-----------------------------------------------------------------------------80
-Private Sub Ground()
-With This
-    Dim B As Variant
-    For Each B In .DroppingPiece.Blocks
-        Set B.Parent = Nothing
-        Set .Matrix(B.x, B.y).Block = B
-        If B.x < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.x
-    Next B
-    
-    Let .IsHeld = False
-    Let .DroppingShape = 0
-    Set .DroppingPiece = Nothing
-End With
-End Sub
-'-----------------------------------------------------------------------------80
+'=============================================================================80
+' Ghost
+'=============================================================================80
 Private Function GetGhostPiece() As Tetromino
 With This.DroppingPiece.Copy
     Call MovePieceToBottom(.Self)
@@ -906,13 +777,22 @@ With This.DroppingPiece.Copy
 End With
 End Function
 '=============================================================================80
-' Method: Rotation
+' Rotation
 '=============================================================================80
-Private Sub RotateKey_Pressed(ByVal Sign As Long)
-    Call Rotate(Sign)
-    Set GhostPiece = GetGhostPiece()
-End Sub
-'-----------------------------------------------------------------------------80
+Private Function GetKickTable() As Variant
+    Dim KickTable As Variant: ReDim KickTable(1 To 7, 0 To 3, 0 To 3)
+    
+    Dim i As Long, j As Long, k As Long
+    For i = 1 To 7
+        For j = 0 To 3
+            For k = 0 To 3
+                Let KickTable(i, j, k) = GetKickTests(i, j, k)
+            Next k
+        Next j
+    Next i
+    
+    Let GetKickTable = KickTable
+End Function
 Private Function Rotate(ByVal Sign As Long) As Boolean
 With This
     Dim TestPiece As Tetromino: Set TestPiece = .DroppingPiece.Copy
@@ -934,45 +814,33 @@ With This
         Next Test
     End If
     
-    If Rotate Then
-        Set DroppingPiece = TestPiece
-        Let .DrawBoard = True
-    End If
+    If Rotate Then Set DroppingPiece = TestPiece
 End With
 End Function
-'-----------------------------------------------------------------------------80
-Private Function GetKickTable() As Variant
-    Dim KickTable As Variant: ReDim KickTable(1 To 7, 0 To 3, 0 To 3)
-    
-    Dim i As Long, j As Long, k As Long
-    For i = 1 To 7
-        For j = 0 To 3
-            For k = 0 To 3
-                Let KickTable(i, j, k) = GetKickTests(i, j, k)
-            Next k
-        Next j
-    Next i
-    
-    Let GetKickTable = KickTable
-End Function
+Private Sub RotateKey_Pressed(ByVal Sign As Long)
+    Call Rotate(Sign)
+    Set GhostPiece = GetGhostPiece()
+End Sub
 '=============================================================================80
-' Method: Clearing
+' Ground
 '=============================================================================80
-Private Sub ClearLines()
+Private Sub Ground()
 With This
-    Dim LineCount As Long: Let LineCount = ClearLines_Internal()
+    Dim B As Variant
+    For Each B In .DroppingPiece.Blocks
+        Set B.Parent = Nothing
+        Set .Matrix(B.x, B.y).Block = B
+        If B.x < .FirstNonEmptyRow Then Let .FirstNonEmptyRow = B.x
+    Next B
     
-    If LineCount Then ' <> 0
-        Let .DrawBoard = True
-        Let .FirstNonEmptyRow = LineCount + .FirstNonEmptyRow
-        Let LinesCleared = LineCount + .LinesCleared
-        Let TotalLinesCleared = LineCount + .TotalLinesCleared
-        Let Score = 100 * Choose(LineCount, 1, 3, 5, 8) * .Level + .Score
-        Let Message = Choose(LineCount, "Single", "Double", "Triple", "Tetris!")
-    End If
+    Let .IsHeld = False
+    Let .DroppingShape = 0
+    Set .DroppingPiece = Nothing
 End With
 End Sub
-'-----------------------------------------------------------------------------80
+'=============================================================================80
+' Clearing
+'=============================================================================80
 Private Function ClearLines_Internal() As Long
 With This
     Dim x As Long, y As Long, i As Long
@@ -1028,6 +896,20 @@ With This
     Let ClearLines_Internal = LineCount
 End With
 End Function
+Private Sub ClearLines()
+With This
+    Dim LineCount As Long: Let LineCount = ClearLines_Internal()
+    
+    If LineCount Then ' <> 0
+        Let .DrawBoard = True
+        Let .FirstNonEmptyRow = LineCount + .FirstNonEmptyRow
+        Let LinesCleared = LineCount + .LinesCleared
+        Let TotalLinesCleared = LineCount + .TotalLinesCleared
+        Let Score = 100 * Choose(LineCount, 1, 3, 5, 8) * .Level + .Score
+        Let Message = Choose(LineCount, "Single", "Double", "Triple", "Tetris!")
+    End If
+End With
+End Sub
 '=============================================================================80
 ' Helper Function
 '=============================================================================80
@@ -1051,7 +933,6 @@ Private Function ShuffleArray(InArray As Variant) As Variant
     
     Let ShuffleArray = Arr
 End Function
-'-----------------------------------------------------------------------------80
 Private Sub SpeedUp(ByVal Toggle As Boolean, Optional ByVal Calc As Variant)
 With Excel.Application
     Let .AskToUpdateLinks = Not Toggle

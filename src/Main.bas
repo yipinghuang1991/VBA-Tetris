@@ -24,7 +24,6 @@ Public Sub StartButton_Click()
         Let Game.State = GameState.Resumed
     End If
 End Sub
-'-----------------------------------------------------------------------------80
 Public Sub StopButton_Click()
 With ThisWorkbook.Worksheets("Tetris")
     If Game Is Nothing Then

@@ -120,7 +120,6 @@ With New Tetromino
     Set GetTetromino = .Self
 End With
 End Function
-'-----------------------------------------------------------------------------80
 Public Function Copy() As Tetromino
 With New Tetromino
     Let .x = This.x
@@ -150,7 +149,6 @@ With This
     Let .y = y + .y
 End With
 End Sub
-'-----------------------------------------------------------------------------80
 Public Sub Rotate(Optional ByVal Sign As Long = -1) ' CCW: Sign = 1, CW: Sign = -1
 With This
     Dim B As Variant
@@ -161,7 +159,6 @@ With This
     Let Stance = Sign + .Stance
 End With
 End Sub
-'-----------------------------------------------------------------------------80
 Public Sub Reflect(Optional ByVal x As Boolean = True, Optional ByVal y As Boolean)
     Dim B As Variant
     For Each B In This.Blocks
@@ -211,7 +208,6 @@ With Block
     Let GetTetrominoBlocks = Blocks
 End With
 End Function
-'-----------------------------------------------------------------------------80
 Private Function GetTetrominoColor(ByVal Shape As TetrominoShape) As Long
 Select Case Shape
     Case IShape: Let GetTetrominoColor = RGB(0, 255, 255)

@@ -40,11 +40,9 @@ Private This As Variable
 Public Property Get Self() As Cell
     Set Self = Me
 End Property
-'-----------------------------------------------------------------------------80
 Public Property Get State() As CellState
     Let State = This.State
 End Property
-'-----------------------------------------------------------------------------80
 Public Property Get Color() As Long
 With This
     If .State <> CellState.Unoccupied Then

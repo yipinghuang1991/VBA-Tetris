@@ -37,11 +37,9 @@ Private This As Variable
 Public Property Get Self() As Block
     Set Self = Me
 End Property
-'-----------------------------------------------------------------------------80
 Public Property Get HasParent() As Boolean
     Let HasParent = This.HasParent
 End Property
-'-----------------------------------------------------------------------------80
 Public Property Set Parent(ByRef Parent As Tetromino)
 With This
     If .HasParent And (Parent Is Nothing) Then
@@ -124,7 +122,6 @@ With New Block
     Set GetBlock = .Self
 End With
 End Function
-'-----------------------------------------------------------------------------80
 Public Function Copy() As Block
 With This
     Set Copy = GetBlock(.x, .y, .IsZeroCollapsed, .Parent, .Color)
@@ -146,7 +143,6 @@ With This
     End If
 End With
 End Sub
-'-----------------------------------------------------------------------------80
 Public Sub Reflect(Optional ByVal XAxis As Boolean = True, Optional ByVal YAxis As Boolean)
 With This
     If .IsZeroCollapsed Then
@@ -169,7 +165,6 @@ With This
     Let .IsZeroCollapsed = True
 End With
 End Sub
-'-----------------------------------------------------------------------------80
 Private Sub UncollapseZero()
 With This
     If .x <= 0 Then Let .x = .x - 1

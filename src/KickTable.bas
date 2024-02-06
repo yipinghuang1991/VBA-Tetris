@@ -90,5 +90,3 @@ Public Function GetKickTests(ByVal Shape As TetrominoShape, _
         Let GetKickTests = Tests
     End If
 End Function
-
-
